@@ -8,7 +8,7 @@
 (define-syntax assert
   (simple-macro (condition)
     (if condition 'ok
-        (error "assertion failed"))))
+        (error (cons "assertion failed" (quote condition))))))
 
 (define (list . x) x)
 

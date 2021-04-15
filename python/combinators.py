@@ -1,0 +1,79 @@
+import inspect
+
+
+def compose(f, g):
+    def the_composition(*args):
+        tmp = g(*args)
+        return f(tmp)
+
+    return the_composition
+
+
+def iterate(n):
+    def the_iterator(f):
+        if n == 0:
+            return identity
+        return compose(f, iterate(n - 1)(f))
+
+    return the_iterator
+
+
+def identity(*args):
+    if len(args) == 1:
+        return args[0]
+    return args
+
+
+def parallel_combine(h, f, g):
+    def the_combination(*args):
+        return h(f(*args), g(*args))
+
+    return the_combination
+
+
+def spread_combine(h, f, g):
+    n = get_arity(f)
+    m = get_arity(g)
+    t = n + m
+
+    def the_combination(*args):
+        assert len(args) == t
+        return h(f(*args[:n]), g(*args[n:]))
+
+    return restrict_arity(the_combination, t)
+
+
+def restrict_arity(proc, n_args):
+    ARITY_TABLE[proc] = n_args
+    return proc
+
+
+def get_arity(proc):
+    try:
+        return ARITY_TABLE[proc]
+    except KeyError:
+        pass
+    sig = inspect.signature(proc)
+    n_required = 0
+    n_optional = 0
+    vararg = False
+    for param in sig.parameters.values():
+        if (param.kind == inspect.Parameter.POSITIONAL_ONLY
+                or param.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD):
+            if param.default == inspect.Parameter.empty:
+                n_required += 1
+            else:
+                n_optional += 1
+        elif param.kind == inspect.Parameter.VAR_POSITIONAL:
+            vararg = True
+        elif (param.kind == inspect.Parameter.KEYWORD_ONLY
+              and param.default == inspect.Parameter.empty):
+            raise TypeError("Arity understands no keyword arguments")
+
+    if vararg or n_optional > 0:
+        raise TypeError("Variable arity not understood yet")
+
+    return n_required
+
+
+ARITY_TABLE = {}
