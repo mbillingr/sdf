@@ -2,11 +2,15 @@ import inspect
 
 
 def compose(f, g):
+    check_arity(f, 1)
+    n = get_arity(g)
+
     def the_composition(*args):
+        check_args(args, n)
         tmp = g(*args)
         return f(tmp)
 
-    return the_composition
+    return restrict_arity(the_composition, n)
 
 
 def iterate(n):
@@ -18,17 +22,20 @@ def iterate(n):
     return the_iterator
 
 
-def identity(*args):
-    if len(args) == 1:
-        return args[0]
-    return args
+def identity(arg):
+    return arg
 
 
 def parallel_combine(h, f, g):
+    check_arity(h, 2)
+    n = get_arity(f)
+    check_arity(g, n)
+
     def the_combination(*args):
+        check_args(args, n)
         return h(f(*args), g(*args))
 
-    return the_combination
+    return restrict_arity(the_combination, n)
 
 
 def spread_combine(h, f, g):
@@ -37,7 +44,7 @@ def spread_combine(h, f, g):
     t = n + m
 
     def the_combination(*args):
-        assert len(args) == t
+        check_args(args, t)
         return h(f(*args[:n]), g(*args[n:]))
 
     return restrict_arity(the_combination, t)
@@ -74,6 +81,18 @@ def get_arity(proc):
         raise TypeError("Variable arity not understood yet")
 
     return n_required
+
+
+def check_arity(func, expected_arity):
+    if get_arity(func) != expected_arity:
+        raise TypeError(f"Expected arity {expected_arity},"
+                        f" got {get_arity(func)}")
+
+
+def check_args(args, n_expected):
+    if len(args) != n_expected:
+        raise TypeError(f"Expected {n_expected} positional "
+                        f"arguments but got {len(args)}.")
 
 
 ARITY_TABLE = {}
