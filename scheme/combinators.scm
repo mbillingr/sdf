@@ -31,9 +31,12 @@
 ; -----------------------------------
 
 (define (compose f g)
-  (define (the-composition . args)
-    (f (apply g args)))
-  the-composition)
+  (assert (= (get-arity f) 1))
+  (let ((n (get-arity g)))
+    (define (the-composition . args)
+      (assert (= (length args) n))
+      (f (apply g args)))
+    (restrict-arity the-composition n)))
 
 (define (iterate n)
   (define (the-iterator f)
@@ -45,10 +48,15 @@
 (define (identity x) x)
 
 (define (parallel-combine h f g)
-  (define (the-combination . args)
-    (h (apply f args)
-       (apply g args)))
-  the-combination)
+  (assert (= (get-arity h) 2))
+  (let ((n (get-arity f))
+        (m (get-arity g)))
+    (assert (= n m))
+    (define (the-combination . args)
+      (assert (= (length args) n))
+      (h (apply f args)
+         (apply g args)))
+    (restrict-arity the-combination n)))
 
 (define (spread-combine h f g)
   (let ((n (get-arity f))
