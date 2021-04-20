@@ -68,8 +68,14 @@
     (let ((t (+ n m)))
       (define (the-combination . args)
         (assert (= (length args) t))
-        (let-values ((fv (apply f (list-head args n)))
-                     (gv (apply g (list-tail args n))))
+        ;(let-values ((fv (apply f (list-head args n)))
+        ;             (gv (apply g (list-tail args n))))
+        (let ((fv (call-with-values
+                    (lambda () (apply f (list-head args n)))
+                    list))
+              (gv (call-with-values
+                    (lambda () (apply g (list-tail args n)))
+                    list)))
           (apply values (append fv gv))))
       (restrict-arity the-combination t))))
 
@@ -94,5 +100,5 @@
 (display ((spread-combine list
                           (lambda (x y) (values x y))
                           (lambda (u v w) (values w v u)))
-          'a 'b 'c 'd 'e'))
+          'a 'b 'c 'd 'e))
 (newline)
