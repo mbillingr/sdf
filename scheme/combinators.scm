@@ -8,7 +8,7 @@
 (define-syntax assert
   (simple-macro (condition)
     (if condition 'ok
-        (error (cons "assertion failed" (quote condition))))))
+        (error (list "assertion failed" (quote condition))))))
 
 (define (list . x) x)
 
@@ -31,11 +31,12 @@
 ; -----------------------------------
 
 (define (compose f g)
-  (assert (= (get-arity f) 1))
   (let ((n (get-arity g)))
     (define (the-composition . args)
       (assert (= (length args) n))
-      (f (apply g args)))
+      (call-with-values
+        (lambda () (apply g args))
+        f))
     (restrict-arity the-composition n)))
 
 (define (iterate n)
@@ -59,13 +60,17 @@
     (restrict-arity the-combination n)))
 
 (define (spread-combine h f g)
+  (compose h (spread-apply f g)))
+
+(define (spread-apply f g)
   (let ((n (get-arity f))
         (m (get-arity g)))
     (let ((t (+ n m)))
       (define (the-combination . args)
         (assert (= (length args) t))
-        (h (apply f (list-head args n))
-           (apply g (list-tail args n))))
+        (let-values ((fv (apply f (list-head args n)))
+                     (gv (apply g (list-tail args n))))
+          (apply values (append fv gv))))
       (restrict-arity the-combination t))))
 
 (define (restrict-arity proc nargs)
@@ -83,5 +88,11 @@
 
 (define arity-table (make-key-weak-eq-hash-table))
 
+(display ((spread-combine list (lambda (a b) (list 'foo a b)) (lambda (c d e) (list 'bar c d e))) 1 2 3 4 5))
+(newline)
 
-((spread-combine list (lambda (a b) (list 'foo a b)) (lambda (c d e) (list 'bar c d e))) 1 2 3 4 5)
+(display ((spread-combine list
+                          (lambda (x y) (values x y))
+                          (lambda (u v w) (values w v u)))
+          'a 'b 'c 'd 'e'))
+(newline)
