@@ -28,6 +28,15 @@
       (cons (car lst)
             (list-head (cdr lst) (- n 1)))))
 
+(define (list-remove lst n)
+  (if (= n 0)
+      (cdr lst)
+      (cons (car lst)
+            (list-remove (cdr lst) (- n 1)))))
+
+(define (exact-nonnegative-integer? i)
+  #t)  ; our interpreter does not have this function yet
+
 ; -----------------------------------
 
 (define (compose f g)
@@ -78,6 +87,16 @@
                     list)))
           (apply values (append fv gv))))
       (restrict-arity the-combination t))))
+
+(define (discard-argument i)
+  (assert (exact-nonnegative-integer? i))
+  (lambda (f)
+    (let ((m (+ (get-arity f) 1)))
+      (define (the-combination . args)
+        (assert (= (length args) m))
+        (apply f (list-remove args i)))
+      (assert (< i m))
+      (restrict-arity the-combination m))))
 
 (define (restrict-arity proc nargs)
   (hash-table-set! arity-table proc nargs)

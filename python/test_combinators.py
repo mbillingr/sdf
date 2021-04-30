@@ -2,8 +2,8 @@ from unittest.mock import Mock, call
 
 import pytest
 
-from combinators import (compose, iterate, parallel_combine, spread_combine,
-                         restrict_arity, get_arity)
+from combinators import (compose, discard_argument, iterate, parallel_combine,
+                         spread_combine, restrict_arity, get_arity)
 
 
 def test_compose():
@@ -130,3 +130,25 @@ def test_get_arity_of_arbitrary_function():
         assert get_arity(lambda *args: None)
 
     assert get_arity(lambda **kwargs: None) == 0
+
+
+def test_discard_argument():
+    dc = discard_argument(1)
+    func = restrict_arity(Mock(), 2)
+    f = dc(func)
+
+    r = f(1, 2, 3)
+
+    func.assert_called_once_with(1, 3)
+    assert r == func.return_value
+
+
+def test_discard_keyword_argument():
+    dc = discard_argument('b')
+    func = restrict_arity(Mock(), 2)
+    f = dc(func)
+
+    r = f(1, b=2, c=3)
+
+    func.assert_called_once_with(1, c=3)
+    assert r == func.return_value

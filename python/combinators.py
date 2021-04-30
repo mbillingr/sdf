@@ -56,6 +56,39 @@ def spread_apply(f, g):
     return restrict_arity(the_combination, t)
 
 
+def discard_argument(i):
+    if isinstance(i, int):
+        return discard_positional_argument(i)
+    if isinstance(i, str):
+        return discard_keyword_argument(i)
+    raise TypeError("discarded argument must be int or str")
+
+
+def discard_positional_argument(i):
+    def wrapper(f):
+        m = get_arity(f) + 1
+        assert i < m
+
+        def the_combination(*args, **kwargs):
+            check_args(args, m)
+            return f(*(args[:i] + args[i + 1:]), **kwargs)
+
+        return restrict_arity(the_combination, m)
+
+    return wrapper
+
+
+def discard_keyword_argument(name):
+    def wrapper(f):
+        def the_combination(*args, **kwargs):
+            del kwargs[name]
+            return f(*args, **kwargs)
+
+        return the_combination
+
+    return wrapper
+
+
 def restrict_arity(proc, n_args):
     ARITY_TABLE[proc] = n_args
     return proc
