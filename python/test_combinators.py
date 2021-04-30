@@ -2,8 +2,9 @@ from unittest.mock import Mock, call
 
 import pytest
 
-from combinators import (compose, discard_argument, iterate, parallel_combine,
-                         spread_combine, restrict_arity, get_arity)
+from combinators import (compose, curry_argument, discard_argument, iterate,
+                         parallel_combine, spread_combine, restrict_arity,
+                         get_arity)
 
 
 def test_compose():
@@ -15,7 +16,7 @@ def test_compose():
 
     g.assert_called_once_with(1, 2, 3)
     f.assert_called_once_with(g.return_value)
-    assert result == f.return_value
+    assert result is f.return_value
 
 
 def test_compose_f_must_be_unary():
@@ -50,7 +51,7 @@ def test_iterate_once_calls_the_function():
     func = restrict_arity(Mock(), 1)
     result = iterate(1)(func)(42)
     func.assert_called_once_with(42)
-    assert result == func.return_value
+    assert result is func.return_value
 
 
 def test_iterate_calls_function_n_times():
@@ -78,7 +79,7 @@ def test_parallel_combine():
     f.assert_called_once_with(1, 2, 3)
     g.assert_called_once_with(1, 2, 3)
     h.assert_called_once_with(f.return_value, g.return_value)
-    assert result == h.return_value
+    assert result is h.return_value
 
 
 def test_parallel_combine_h_must_be_binary():
@@ -114,7 +115,7 @@ def test_spread_combine():
     f.assert_called_once_with(1, 2)
     g.assert_called_once_with(3, 4, 5)
     h.assert_called_once_with(f.return_value, g.return_value)
-    assert result == h.return_value
+    assert result is h.return_value
     assert get_arity(c) == 5
 
 
@@ -140,7 +141,7 @@ def test_discard_argument():
     r = f(1, 2, 3)
 
     func.assert_called_once_with(1, 3)
-    assert r == func.return_value
+    assert r is func.return_value
 
 
 def test_discard_keyword_argument():
@@ -151,4 +152,15 @@ def test_discard_keyword_argument():
     r = f(1, b=2, c=3)
 
     func.assert_called_once_with(1, c=3)
-    assert r == func.return_value
+    assert r is func.return_value
+
+
+def test_curry_argument():
+    func = restrict_arity(Mock(), 4)
+    f1 = curry_argument(2)
+    f2 = f1('a', 'b', 'c')
+    f3 = f2(func)
+    r = f3('d')
+
+    func.assert_called_once_with('a', 'b', 'd', 'c')
+    assert r is func.return_value

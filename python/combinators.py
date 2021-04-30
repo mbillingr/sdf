@@ -89,6 +89,20 @@ def discard_keyword_argument(name):
     return wrapper
 
 
+def curry_argument(i):
+    def curry_wrapper(*args):
+        args1 = args[:i]
+        args2 = args[i:]
+
+        def currier(f):
+            assert len(args) == get_arity(f) - 1
+            return lambda x: f(*args1, x, *args2)
+
+        return currier
+
+    return curry_wrapper
+
+
 def restrict_arity(proc, n_args):
     ARITY_TABLE[proc] = n_args
     return proc

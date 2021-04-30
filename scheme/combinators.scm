@@ -34,6 +34,12 @@
       (cons (car lst)
             (list-remove (cdr lst) (- n 1)))))
 
+(define (list-insert lst index value)
+  (if (= index 0)
+      (cons value lst)
+      (cons (car lst)
+            (list-insert (cdr lst) (- index 1) value))))
+
 (define (exact-nonnegative-integer? i)
   #t)  ; our interpreter does not have this function yet
 
@@ -97,6 +103,13 @@
         (apply f (list-remove args i)))
       (assert (< i m))
       (restrict-arity the-combination m))))
+
+(define (curry-argument i)
+  (lambda args
+    (lambda (f)
+      (assert (= (length args) (- (get-arity f) 1)))
+      (lambda (x)
+        (apply f (list-insert args i x))))))
 
 (define (restrict-arity proc nargs)
   (hash-table-set! arity-table proc nargs)
