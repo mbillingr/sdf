@@ -1,14 +1,14 @@
 import inspect
 
+from values import apply, Values
+
 
 def compose(f, g):
-    check_arity(f, 1)
     n = get_arity(g)
 
-    def the_composition(*args):
+    def the_composition(*args, **kwargs):
         check_args(args, n)
-        tmp = g(*args)
-        return f(tmp)
+        return apply(f, g(*args, **kwargs))
 
     return restrict_arity(the_composition, n)
 
@@ -31,21 +31,27 @@ def parallel_combine(h, f, g):
     n = get_arity(f)
     check_arity(g, n)
 
-    def the_combination(*args):
+    def the_combination(*args, **kwargs):
         check_args(args, n)
-        return h(f(*args), g(*args))
+        return h(f(*args, **kwargs), g(*args, **kwargs))
 
     return restrict_arity(the_combination, n)
 
 
 def spread_combine(h, f, g):
+    return compose(h, spread_apply(f, g))
+
+
+def spread_apply(f, g):
     n = get_arity(f)
     m = get_arity(g)
     t = n + m
 
     def the_combination(*args):
         check_args(args, t)
-        return h(f(*args[:n]), g(*args[n:]))
+        fv = Values(f(*args[:n]))
+        gv = Values(g(*args[n:]))
+        return fv.append(gv)
 
     return restrict_arity(the_combination, t)
 
