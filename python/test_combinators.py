@@ -3,8 +3,8 @@ from unittest.mock import Mock, call
 import pytest
 
 from combinators import (compose, curry_argument, discard_argument, iterate,
-                         parallel_combine, spread_combine, restrict_arity,
-                         get_arity)
+                         parallel_combine, permute_arguments, spread_combine,
+                         restrict_arity, get_arity)
 
 
 def test_compose():
@@ -163,4 +163,14 @@ def test_curry_argument():
     r = f3('d')
 
     func.assert_called_once_with('a', 'b', 'd', 'c')
+    assert r is func.return_value
+
+
+def test_permute_arguments():
+    func = restrict_arity(Mock(), 4)
+    f1 = permute_arguments(1, 2, 0, 3)
+    f2 = f1(func)
+    r = f2('a', 'b', 'c', 'd')
+
+    func.assert_called_once_with('b', 'c', 'a', 'd')
     assert r is func.return_value

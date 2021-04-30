@@ -103,6 +103,27 @@ def curry_argument(i):
     return curry_wrapper
 
 
+def permute_arguments(*permspec):
+    permute = make_permutation(permspec)
+
+    def permutation_wrapper(f):
+        def the_combination(*args):
+            return f(*permute(args))
+
+        n = get_arity(f)
+        assert n == len(permspec)
+        return restrict_arity(the_combination, n)
+
+    return permutation_wrapper
+
+
+def make_permutation(permspec):
+    def the_permuter(lst):
+        return [lst[i] for i in permspec]
+
+    return the_permuter
+
+
 def restrict_arity(proc, n_args):
     ARITY_TABLE[proc] = n_args
     return proc

@@ -17,6 +17,11 @@
       0
       (+ 1 (length (cdr lst)))))
 
+(define (list-ref lst n)
+  (if (= n 0)
+      (car lst)
+      (list-ref (cdr lst) (- n 1))))
+
 (define (list-tail lst n)
   (if (= n 0)
       lst
@@ -39,6 +44,12 @@
       (cons value lst)
       (cons (car lst)
             (list-insert (cdr lst) (- index 1) value))))
+
+(define (map f lst)
+  (if (null? lst)
+      lst
+      (cons (f (car lst))
+            (map f (cdr lst)))))
 
 (define (exact-nonnegative-integer? i)
   #t)  ; our interpreter does not have this function yet
@@ -111,6 +122,21 @@
       (lambda (x)
         (apply f (list-insert args i x))))))
 
+(define (permute-arguments . permspec)
+  (let ((permute (make-permutation permspec)))
+    (lambda (f)
+      (define (the-combination . args)
+        (apply f (permute args)))
+      (let ((n (get-arity f)))
+        (assert (= n (length permspec)))
+        (restrict-arity the-combination n)))))
+
+(define (make-permutation permspec)
+  (define (the-permuter lst)
+    (map (lambda (p) (list-ref lst p))
+         permspec))
+  the-permuter)
+
 (define (restrict-arity proc nargs)
   (hash-table-set! arity-table proc nargs)
   proc)
@@ -133,4 +159,7 @@
                           (lambda (x y) (values x y))
                           (lambda (u v w) (values w v u)))
           'a 'b 'c 'd 'e))
+(newline)
+
+(display (((permute-arguments 1 2 0 3) (lambda (x y z w) (list 'foo x y z w))) 'a 'b 'c 'd))
 (newline)
