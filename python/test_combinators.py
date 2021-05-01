@@ -19,16 +19,6 @@ def test_compose():
     assert result is f.return_value
 
 
-def test_compose_f_must_must_take_at_least_one_argument():
-    with pytest.raises(TypeError, match="arguments"):
-        compose(lambda: 0, Mock())
-
-
-def test_compose_f_must_must_take_at_most_one_required_argument():
-    with pytest.raises(TypeError, match="arguments"):
-        compose(lambda x, y: 0, Mock())
-
-
 def test_composition_arity_equals_arity_of_g():
     f = restrict_arity(Mock(), 1)
     h = compose(f, lambda x, y: 0)

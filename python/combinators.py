@@ -46,10 +46,10 @@ def spread_combine(h, f, g):
 def spread_apply(f, g):
     n = get_arity(f)
     m = get_arity(g)
-    assert n.is_fixed() or m.is_fixed()
+    assert n.fixed() or m.fixed()
 
     t = n + m
-    if n.is_fixed():
+    if n.fixed():
         def the_combination(*args, **kwargs):
             t.check(len(args))
             i = n.min
@@ -78,10 +78,9 @@ def discard_argument(i):
 def discard_positional_argument(i):
     def wrapper(f):
         m = get_arity(f) + 1
-        assert i < m
 
         def the_combination(*args, **kwargs):
-            check_args(args, m)
+            m.check(len(args))
             return f(*(args[:i] + args[i + 1:]), **kwargs)
 
         return restrict_arity(the_combination, m)
@@ -106,7 +105,7 @@ def curry_argument(i):
         args2 = args[i:]
 
         def currier(f):
-            assert len(args) == get_arity(f) - 1
+            get_arity(f).check(len(args) + 1)
             return lambda x: f(*args1, x, *args2)
 
         return currier
@@ -122,7 +121,7 @@ def permute_arguments(*permspec):
             return f(*permute(args))
 
         n = get_arity(f)
-        assert n == len(permspec)
+        assert n.fixed() == len(permspec)
         return restrict_arity(the_combination, n)
 
     return permutation_wrapper
@@ -190,8 +189,8 @@ class Arity:
         else:
             self.max = max
 
-    def is_fixed(self):
-        return self.min == self.max
+    def fixed(self):
+        return self.min == self.max and self.min
 
     def is_compatible(self, n_args):
         return n_args >= self.min and (self.max is False or n_args <= self.max)
@@ -202,6 +201,8 @@ class Arity:
                             f" got {n_args}")
 
     def __add__(self, other):
+        if isinstance(other, int):
+            return self + Arity(other, other)
         min = self.min + other.min
         if self.max and other.max:
             max = self.max + other.max
@@ -213,7 +214,7 @@ class Arity:
         return self.min == other.min and self.max == other.max
 
     def __repr__(self):
-        if self.is_fixed():
+        if self.fixed():
             return str(self.min)
         elif not self.max:
             return f'>={self.min}'

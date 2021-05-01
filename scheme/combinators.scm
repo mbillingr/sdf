@@ -125,12 +125,17 @@
 (define (discard-argument i)
   (assert (exact-nonnegative-integer? i))
   (lambda (f)
-    (let ((m (+ (get-arity f) 1)))
+    (let ((m (arity-add-fixed (get-arity f) 1)))
       (define (the-combination . args)
-        (assert (= (length args) m))
+        (check-arity m (length args))
         (apply f (list-remove args i)))
-      (assert (< i m))
       (restrict-arity the-combination m))))
+
+(define (discard-argument i)
+  (assert (exact-nonnegative-integer? i))
+  (lambda (f)
+    (compose f (lambda args
+                 (apply values (list-remove args i))))))
 
 (define (curry-argument i)
   (lambda args
@@ -145,7 +150,7 @@
       (define (the-combination . args)
         (apply f (permute args)))
       (let ((n (get-arity f)))
-        (assert (= n (length permspec)))
+        (check-arity n (length permspec))
         (restrict-arity the-combination n)))))
 
 (define (make-permutation permspec)
