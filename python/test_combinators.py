@@ -2,7 +2,7 @@ from unittest.mock import Mock, call
 
 import pytest
 
-from combinators import (compose, curry_argument, discard_argument, iterate,
+from combinators import (compose, curry_arguments, discard_arguments, iterate,
                          parallel_combine, permute_arguments, spread_combine,
                          restrict_arity, get_arity)
 
@@ -133,8 +133,8 @@ def test_get_arity_of_arbitrary_function():
     assert get_arity(lambda **kwargs: None) == 0
 
 
-def test_discard_argument():
-    dc = discard_argument(1)
+def test_discard_one_argument():
+    dc = discard_arguments(1)
     func = restrict_arity(Mock(), 2)
     f = dc(func)
 
@@ -144,8 +144,19 @@ def test_discard_argument():
     assert r is func.return_value
 
 
+def test_discard_multiple_arguments():
+    dc = discard_arguments(0, 2, 4)
+    func = restrict_arity(Mock(), 2)
+    f = dc(func)
+
+    r = f(1, 2, 3, 4, 5)
+
+    func.assert_called_once_with(2, 4)
+    assert r is func.return_value
+
+
 def test_discard_keyword_argument():
-    dc = discard_argument('b')
+    dc = discard_arguments('b')
     func = restrict_arity(Mock(), 2)
     f = dc(func)
 
@@ -157,12 +168,23 @@ def test_discard_keyword_argument():
 
 def test_curry_argument():
     func = restrict_arity(Mock(), 4)
-    f1 = curry_argument(2)
+    f1 = curry_arguments(2)
     f2 = f1('a', 'b', 'c')
     f3 = f2(func)
     r = f3('d')
 
     func.assert_called_once_with('a', 'b', 'd', 'c')
+    assert r is func.return_value
+
+
+def test_curry_multple_arguments():
+    func = restrict_arity(Mock(), 5)
+    f1 = curry_arguments(1, 3)
+    f2 = f1('a', 'b', 'c')
+    f3 = f2(func)
+    r = f3('x', 'y')
+
+    func.assert_called_once_with('a', 'x', 'b', 'y', 'c')
     assert r is func.return_value
 
 

@@ -1,4 +1,5 @@
 (import (sunny arity)
+        (sunny derived-syntax)
         (sunny hash-table))
 
 ; -----------------------------------
@@ -39,11 +40,24 @@
       (cons (car lst)
             (list-remove (cdr lst) (- n 1)))))
 
+(define (list-remove* lst indices)
+  (if (null? indices)
+      lst
+      (list-remove (list-remove* lst (cdr indices))
+                   (car indices))))
+
 (define (list-insert lst index value)
   (if (= index 0)
       (cons value lst)
       (cons (car lst)
             (list-insert (cdr lst) (- index 1) value))))
+
+(define (list-insert* lst indices values)
+  (if (null? indices)
+      lst
+      (list-insert* (list-insert lst (car indices) (car values))
+                    (cdr indices)
+                    (cdr values))))
 
 (define (map f lst)
   (if (null? lst)
@@ -105,22 +119,21 @@
           (apply values (append fv gv))))
       (restrict-arity the-combination t))))
 
-(define (discard-argument i)
-  (assert (exact-nonnegative-integer? i))
+(define (discard-arguments . indices)
   (lambda (f)
-    (let ((m (+ (get-arity f) 1)))
+    (let ((m (+ (get-arity f) (length indices))))
       (define (the-combination . args)
         (assert (= (length args) m))
-        (apply f (list-remove args i)))
-      (assert (< i m))
+        (apply f (list-remove* args indices)))
       (restrict-arity the-combination m))))
 
-(define (curry-argument i)
+(define (curry-arguments . indices)
   (lambda args
-    (lambda (f)
-      (assert (= (length args) (- (get-arity f) 1)))
-      (lambda (x)
-        (apply f (list-insert args i x))))))
+    (let ((n (+ (length args) (length indices))))
+      (lambda (f)
+        (assert (= (get-arity f) n))
+        (lambda x
+          (apply f (list-insert* args indices x)))))))
 
 (define (permute-arguments . permspec)
   (let ((permute (make-permutation permspec)))

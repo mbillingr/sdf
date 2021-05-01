@@ -56,12 +56,18 @@ def spread_apply(f, g):
     return restrict_arity(the_combination, t)
 
 
-def discard_argument(i):
-    if isinstance(i, int):
-        return discard_positional_argument(i)
-    if isinstance(i, str):
-        return discard_keyword_argument(i)
-    raise TypeError("discarded argument must be int or str")
+def discard_arguments(*indices):
+    def wrapper(f):
+        for i in indices:
+            if isinstance(i, int):
+                f = discard_positional_argument(i)(f)
+            elif isinstance(i, str):
+                f = discard_keyword_argument(i)(f)
+            else:
+                raise TypeError("discarded argument must be int or str")
+        return f
+
+    return wrapper
 
 
 def discard_positional_argument(i):
@@ -89,14 +95,19 @@ def discard_keyword_argument(name):
     return wrapper
 
 
-def curry_argument(i):
+def curry_arguments(*indices):
     def curry_wrapper(*args):
-        args1 = args[:i]
-        args2 = args[i:]
+        args = list(args)
 
         def currier(f):
-            assert len(args) == get_arity(f) - 1
-            return lambda x: f(*args1, x, *args2)
+            assert len(args) == get_arity(f) - len(indices)
+
+            def inner_wrapper(*values):
+                for i, x in zip(indices, values):
+                    args.insert(i, x)
+                return f(*args)
+
+            return inner_wrapper
 
         return currier
 
