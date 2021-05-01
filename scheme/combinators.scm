@@ -73,7 +73,13 @@
 
 ; -----------------------------------
 
-(define (compose f g)
+(define (compose . funcs)
+  (if (null? funcs)
+      values
+      (compose2 (car funcs)
+                (apply compose (cdr funcs)))))
+
+(define (compose2 f g)
   (let ((n (get-arity g)))
     (define (the-composition . args)
       (check-arity n (length args))

@@ -5,6 +5,7 @@ import pytest
 from combinators import (compose, curry_arguments, discard_arguments, iterate,
                          parallel_combine, permute_arguments, spread_combine,
                          restrict_arity, get_arity, Arity)
+from values import Values
 
 
 def test_compose():
@@ -244,3 +245,28 @@ def test_permute_arguments():
 
     func.assert_called_once_with('b', 'c', 'a', 'd')
     assert r is func.return_value
+
+
+def test_compose_zero_funcs():
+    h = compose()
+    assert h(1) == Values(1)
+
+
+def test_compose_multiple_funcs():
+    def poly(*args):
+        results = []
+        for x in args:
+            results.extend([1, x, x * x])
+        return Values(*results)
+
+    def sum(*args):
+        r = 0
+        for x in args:
+            r += x
+        return r
+
+    def square(x):
+        return x * x
+
+    h = compose(square, sum, poly)
+    assert h(2) == 7 * 7

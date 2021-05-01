@@ -3,7 +3,19 @@ import inspect
 from values import apply, Values
 
 
-def compose(f, g):
+def compose(*funcs):
+    funcs = list(funcs)
+    try:
+        f = funcs.pop()
+    except IndexError:
+        f = Values
+
+    for func in funcs[::-1]:
+        f = compose2(func, f)
+    return f
+
+
+def compose2(f, g):
     n = get_arity(g)
 
     def the_composition(*args, **kwargs):
@@ -115,7 +127,7 @@ def curry_arguments(*indices):
         args = list(args)
 
         def currier(f):
-            assert len(args) == get_arity(f) - len(indices)
+            get_arity(f).check(len(args) + len(indices))
 
             def inner_wrapper(*values):
                 for i, x in zip(indices, values):
