@@ -68,12 +68,15 @@
 (define (exact-nonnegative-integer? i)
   #t)  ; our interpreter does not have this function yet
 
+(define (or a b)
+  (if a a b))
+
 ; -----------------------------------
 
 (define (compose f g)
   (let ((n (get-arity g)))
     (define (the-composition . args)
-      (assert (= (length args) n))
+      (check-arity n (length args))
       (call-with-values
         (lambda () (apply g args))
         f))
@@ -105,9 +108,9 @@
 (define (parallel-apply f g)
   (let ((n (get-arity f))
         (m (get-arity g)))
-    (assert (= n m))
+    (assert (equal? n m))
     (define (the-combination . args)
-      (assert (= (length args) n))
+      (check-arity n (length args))
       ;(let-values ((fv (apply f args))
       ;             (gv (apply g args)))
       (let ((fv (call-with-values
@@ -123,21 +126,35 @@
   (compose h (spread-apply f g)))
 
 (define (spread-apply f g)
-  (let ((n (get-arity f))
-        (m (get-arity g)))
-    (let ((t (+ n m)))
-      (define (the-combination . args)
-        (assert (= (length args) t))
-        ;(let-values ((fv (apply f (list-head args n)))
-        ;             (gv (apply g (list-tail args n))))
-        (let ((fv (call-with-values
-                    (lambda () (apply f (list-head args n)))
-                    list))
-              (gv (call-with-values
-                    (lambda () (apply g (list-tail args n)))
-                    list)))
-          (apply values (append fv gv))))
-      (restrict-arity the-combination t))))
+  (let ((arity-f (get-arity f))
+        (arity-g (get-arity g)))
+    (assert (or (fixed-arity? arity-f)
+                (fixed-arity? arity-g)))
+    (if (fixed-arity? arity-f)
+        (let ((n (procedure-arity-min arity-f)))
+          (let ((t (arity-add-fixed arity-g n)))
+            (define (the-combination . args)
+              (check-arity t (length args))
+              (let ((fv (call-with-values
+                          (lambda () (apply f (list-head args n)))
+                          list))
+                    (gv (call-with-values
+                          (lambda () (apply g (list-tail args n)))
+                          list)))
+                (apply values (append fv gv))))
+            (restrict-arity the-combination t)))
+        (let ((m (procedure-arity-min arity-g)))
+          (let ((t (arity-add-fixed arity-f m)))
+            (define (the-combination . args)
+              (check-arity t (length args))
+              (let ((fv (call-with-values
+                          (lambda () (apply f (list-head args n)))
+                          list))
+                    (gv (call-with-values
+                          (lambda () (apply g (list-tail args n)))
+                          list)))
+                (apply values (append fv gv))))
+            (restrict-arity the-combination t))))))
 
 (define (discard-arguments . indices)
   (lambda (f)
@@ -158,11 +175,11 @@
 (define (permute-arguments . permspec)
   (let ((permute (make-permutation permspec)))
     (lambda (f)
-      (define (the-combination . args)
-        (apply f (permute args)))
       (let ((n (get-arity f)))
-        (assert (= n (length permspec)))
-        (restrict-arity the-combination n)))))
+        (check-arity n (length permspec))
+        (restrict-arity
+          (compose f (lambda args (apply values (permute args))))
+          n)))))
 
 (define (make-permutation permspec)
   (define (the-permuter lst)
@@ -170,21 +187,32 @@
          permspec))
   the-permuter)
 
-(define (restrict-arity proc nargs)
-  (hash-table-set! arity-table proc nargs)
+(define (restrict-arity proc arity)
+  (hash-table-set! arity-table proc arity)
   proc)
 
 (define (get-arity proc)
   (let ((entry (hash-table-ref/default arity-table proc #f)))
     (if entry
         entry
-        (let ((a (procedure-arity proc)))
-          (assert (eqv? (procedure-arity-min a)
-                        (procedure-arity-max a)))
-          (procedure-arity-min a)))))
+        (procedure-arity proc))))
 
 (define arity-table (make-key-weak-eq-hash-table))
 
+(define (check-arity arity n-args)
+  (assert (>= n-args (procedure-arity-min arity)))
+  (if (procedure-arity-max arity)
+      (assert (<= n-args (procedure-arity-max arity)))))
+
+(define (fixed-arity? arity)
+  (eqv? (procedure-arity-min arity)
+        (procedure-arity-max arity)))
+
+(define (arity-add-fixed arity fixed-n)
+  (cons (+ fixed-n (procedure-arity-min arity))
+        (if (procedure-arity-max arity)
+            (+ fixed-n (procedure-arity-max arity))
+            #f)))
 (display ((spread-combine list (lambda (a b) (list 'foo a b)) (lambda (c d e) (list 'bar c d e))) 1 2 3 4 5))
 (newline)
 
