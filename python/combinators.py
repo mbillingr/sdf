@@ -27,13 +27,18 @@ def identity(arg):
 
 
 def parallel_combine(h, f, g):
-    check_arity(h, 2)
+    return compose(h, parallel_apply(f, g))
+
+
+def parallel_apply(f, g):
     n = get_arity(f)
     check_arity(g, n)
 
     def the_combination(*args, **kwargs):
         check_args(args, n)
-        return h(f(*args, **kwargs), g(*args, **kwargs))
+        fv = Values(f(*args, **kwargs))
+        gv = Values(g(*args, **kwargs))
+        return fv.append(gv)
 
     return restrict_arity(the_combination, n)
 
@@ -47,10 +52,10 @@ def spread_apply(f, g):
     m = get_arity(g)
     t = n + m
 
-    def the_combination(*args):
+    def the_combination(*args, **kwargs):
         check_args(args, t)
-        fv = Values(f(*args[:n]))
-        gv = Values(g(*args[n:]))
+        fv = Values(f(*args[:n], **kwargs))
+        gv = Values(g(*args[n:], **kwargs))
         return fv.append(gv)
 
     return restrict_arity(the_combination, t)
