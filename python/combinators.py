@@ -122,8 +122,8 @@ def permute_arguments(*permspec):
     permute = make_permutation(permspec)
 
     def permutation_wrapper(f):
-        def the_combination(*args):
-            return f(*permute(args))
+        the_combination = compose(
+            f, lambda *args, **kwargs: Values(*permute(args)))
 
         n = get_arity(f)
         assert n.fixed() == len(permspec)

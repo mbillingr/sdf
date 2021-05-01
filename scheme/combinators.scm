@@ -158,11 +158,11 @@
 (define (permute-arguments . permspec)
   (let ((permute (make-permutation permspec)))
     (lambda (f)
-      (define (the-combination . args)
-        (apply f (permute args)))
       (let ((n (get-arity f)))
         (check-arity n (length permspec))
-        (restrict-arity the-combination n)))))
+        (restrict-arity
+          (compose f (lambda args (apply values (permute args))))
+          n)))))
 
 (define (make-permutation permspec)
   (define (the-permuter lst)
