@@ -152,8 +152,8 @@
   (lambda args
     (lambda (f)
       (assert (= (length args) (- (get-arity f) 1)))
-      (lambda (x)
-        (apply f (list-insert args i x))))))
+      (compose f (lambda args
+                   (apply values (list-insert args i x)))))))
 
 (define (permute-arguments . permspec)
   (let ((permute (make-permutation permspec)))

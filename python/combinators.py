@@ -111,7 +111,7 @@ def curry_argument(i):
 
         def currier(f):
             get_arity(f).check(len(args) + 1)
-            return lambda x: f(*args1, x, *args2)
+            return compose(f, lambda x: Values(*args1, x, *args2))
 
         return currier
 
