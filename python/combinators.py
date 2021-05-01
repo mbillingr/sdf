@@ -27,14 +27,18 @@ def identity(arg):
 
 
 def parallel_combine(h, f, g):
-    get_arity(h).check(2)
+    return compose(h, parallel_apply(f, g))
+
+
+def parallel_apply(f, g):
     n = get_arity(f)
-    m = get_arity(g)
-    assert n == m
+    check_arity(g, n)
 
     def the_combination(*args, **kwargs):
         n.check(len(args))
-        return h(f(*args, **kwargs), g(*args, **kwargs))
+        fv = Values(f(*args, **kwargs))
+        gv = Values(g(*args, **kwargs))
+        return fv.append(gv)
 
     return restrict_arity(the_combination, n)
 

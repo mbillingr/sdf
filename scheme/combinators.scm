@@ -78,14 +78,34 @@
 (define (identity x) x)
 
 (define (parallel-combine h f g)
-  (check-arity (get-arity h) 2)
+  (compose h (parallel-apply f g)))
+
+(define (__parallel-combine h f g)
+  (assert (= (get-arity h) 2))
+  (let ((n (get-arity f))
+        (m (get-arity g)))
+    (assert (= n m))
+    (define (the-combination . args)
+      (assert (= (length args) n))
+      (h (apply f args)
+         (apply g args)))
+    (restrict-arity the-combination n)))
+
+(define (parallel-apply f g)
   (let ((n (get-arity f))
         (m (get-arity g)))
     (assert (equal? n m))
     (define (the-combination . args)
-      (check-arity n (length args))
-      (h (apply f args)
-         (apply g args)))
+      (check-arity n (= (length args)))
+      ;(let-values ((fv (apply f args))
+      ;             (gv (apply g args)))
+      (let ((fv (call-with-values
+                  (lambda () (apply f args))
+                  list))
+            (gv (call-with-values
+                  (lambda () (apply g args))
+                  list)))
+        (apply values (append fv gv))))
     (restrict-arity the-combination n)))
 
 (define (spread-combine h f g)
@@ -183,6 +203,18 @@
                           (lambda (x y) (values x y))
                           (lambda (u v w) (values w v u)))
           'a 'b 'c 'd 'e))
+(newline)
+
+(display ((parallel-combine list
+                            (lambda (x y z) (list 'foo x y z))
+                            (lambda (u v w) (list 'bar u v w)))
+          'a 'b 'c))
+(newline)
+
+(display ((parallel-combine list
+                            (lambda (x y z) (values 'foo x y z))
+                            (lambda (u v w) (values 'bar u v w)))
+          'a 'b 'c))
 (newline)
 
 (display (((permute-arguments 1 2 0 3) (lambda (x y z w) (list 'foo x y z w))) 'a 'b 'c 'd))
