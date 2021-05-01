@@ -32,7 +32,8 @@ def parallel_combine(h, f, g):
 
 def parallel_apply(f, g):
     n = get_arity(f)
-    check_arity(g, n)
+    m = get_arity(g)
+    assert n == m
 
     def the_combination(*args, **kwargs):
         n.check(len(args))

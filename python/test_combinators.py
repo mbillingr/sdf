@@ -77,11 +77,6 @@ def test_parallel_combine():
     assert result is h.return_value
 
 
-def test_parallel_combine_h_must_be_binary():
-    with pytest.raises(TypeError, match="arguments"):
-        parallel_combine(lambda x, y, z: 0, Mock(), Mock())
-
-
 def test_parallel_combine_f_and_g_must_have_same_arity():
     with pytest.raises(AssertionError):
         parallel_combine(lambda x, y: 0, lambda a: 0, lambda a, b: 0)

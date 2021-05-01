@@ -96,7 +96,7 @@
         (m (get-arity g)))
     (assert (equal? n m))
     (define (the-combination . args)
-      (check-arity n (= (length args)))
+      (check-arity n (length args))
       ;(let-values ((fv (apply f args))
       ;             (gv (apply g args)))
       (let ((fv (call-with-values
