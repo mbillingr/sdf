@@ -107,7 +107,7 @@
                     (gv (call-with-values
                           (lambda () (apply g (list-tail args n)))
                           list)))
-                (apply values (append fv gv)) ))
+                (apply values (append fv gv))))
             (restrict-arity the-combination t)))
         (let ((m (procedure-arity-min arity-g)))
           (let ((t (arity-add-fixed arity-f m)))
@@ -121,15 +121,6 @@
                           list)))
                 (apply values (append fv gv))))
             (restrict-arity the-combination t))))))
-
-(define (discard-argument i)
-  (assert (exact-nonnegative-integer? i))
-  (lambda (f)
-    (let ((m (arity-add-fixed (get-arity f) 1)))
-      (define (the-combination . args)
-        (check-arity m (length args))
-        (apply f (list-remove args i)))
-      (restrict-arity the-combination m))))
 
 (define (discard-argument i)
   (assert (exact-nonnegative-integer? i))

@@ -81,9 +81,9 @@ def discard_positional_argument(i):
 
         def the_combination(*args, **kwargs):
             m.check(len(args))
-            return f(*(args[:i] + args[i + 1:]), **kwargs)
+            return Values(*(args[:i] + args[i + 1:]), **kwargs)
 
-        return restrict_arity(the_combination, m)
+        return compose(f, the_combination)
 
     return wrapper
 
