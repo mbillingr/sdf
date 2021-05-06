@@ -18,6 +18,10 @@
   '(#\. #\[ #\\ #\^ #\$ #\*))
 
 
+;; helper functions
+
+(define (list . x) x)
+
 (define (append-map func list)
   (if (null? list)
       '()
@@ -27,3 +31,10 @@
 
 (define (list->string list-of-chars)
   (apply string list-of-chars))
+
+(define (memv obj list)
+  (if (null? list)
+      #f
+      (if (eqv? obj (car list))
+          (cdr list)
+          (memv obj (cdr list)))))
