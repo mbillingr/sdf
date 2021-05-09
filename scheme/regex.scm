@@ -1,5 +1,17 @@
 (import (sunny derived-syntax))
 
+; overriden functions
+
+(define primitive-append append)
+(define (append left . more)
+  (if (null? more)
+      left
+      (primitive-append
+        left
+        (apply append more))))
+
+; ------------------------------
+
 (define (r:dot) ".")
 (define (r:bol) "^")
 (define (r:eol) "$")
@@ -91,3 +103,27 @@
 
 (define (list->string list-of-chars)
   (apply string list-of-chars))
+
+(define (remove pred? list)
+  (cond ((null? list))
+        ((pred? (car list))
+         (remove pred? (cdr list)))
+        (else
+          (cons (car list)
+                (remove pred? (cdr list))))))
+
+(define (lset= pred set-a set-b)
+  (and (subset? pred set-a set-b)
+       (subset? pred set-b set-a)))
+
+(define (subset? pred set-a set-b)
+  (if (null? set-a)
+      #t
+      (if (contains? pred (car set-a) set-b)
+          (subset? pred (cdr set-a) set-b)
+          #f)))
+
+(define (contains? pred item set)
+  (cond ((null? set) #f)
+        ((pred item (car set)) #t)
+        (else (contains? pred item (cdr set)))))
