@@ -88,3 +88,11 @@ def _escape_bracketed_contents(members):
             + ''.join(m for m in members if m not in ']^-')
             + optional('^')
             + optional('-'))
+
+
+def star(expr):
+    return repeat(0, None, expr)
+
+
+def plus(expr):
+    return repeat(1, None, expr)

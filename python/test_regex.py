@@ -187,3 +187,11 @@ def test_char_not_from_string_needing_escape():
 
 def test_opt():
     assert r.opt("foo") == "(foo|)"
+
+
+def test_star():
+    assert r.star("x") == "(x*)"
+
+
+def test_plus():
+    assert r.plus("x") == "(xx*)"

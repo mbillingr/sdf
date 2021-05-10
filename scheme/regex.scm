@@ -84,6 +84,10 @@
   '(#\] #\^ #\-))
 
 
+(define (r:* expr) (r:repeat 0 #f expr))
+(define (r:+ expr) (r:repeat 1 #f expr))
+
+
 (define (write-bourne-shell-grep-command expr filename)
   (display (bourne-shell-grep-command-string expr filename)))
 
