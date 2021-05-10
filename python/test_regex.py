@@ -141,19 +141,19 @@ def test_multiple_alternatives():
 
 
 def test_repetition_min_same_as_max():
-    assert r.repeat(3, 3, "foo") == "(foofoofoo)"
+    assert r.repeat(3, 3, "foo") == "(foo{3})"
 
 
 def test_repetition_no_max():
-    assert r.repeat(2, None, r.quote("foo")) == "((foo)(foo)(foo)*)"
+    assert r.repeat(2, None, r.quote("foo")) == "((foo){2,})"
 
 
 def test_repetition_min_max():
-    assert r.repeat(2, 4, "foo") == "(foofoo(foo|)(foo|))"
+    assert r.repeat(2, 4, r.quote("foo")) == "((foo){2,4})"
 
 
 def test_repetition_max_less_than_min_is_ignored():
-    assert r.repeat(2, 1, "foo") == "(foofoo)"
+    assert r.repeat(2, 1, "foo") == "(foo{2})"
 
 
 def test_char_from_empty_string():

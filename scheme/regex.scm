@@ -41,11 +41,13 @@
 
 (define (r:repeat min max expr)
   (apply r:seq
-         (append (make-list min expr)
-                 (cond ((not max) (list expr "*"))
+         (append (list expr
+                       "\\{"
+                       (number->string min))
+                 (cond ((not max) (list ","))
                        ((= max min) '())
-                       (else (make-list (- max min)
-                                        (r:alt expr "")))))))
+                       (else (list "," (number->string max))))
+                 (list "\\}"))))
 
 (define (r:char-from string)
   (case (string-length string)

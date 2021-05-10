@@ -27,4 +27,24 @@ Exercise 2.1
 Exercise 2.2
 ------------
 - [Scheme and Python](https://github.com/mbillingr/sdf/commit/d3080e0d3ebdb8aa7dab5f9cce4e08991390072f)
- 
+
+
+Exercise 2.7
+------------
+a) (r:repeat 0 1 x) calls (r:alt x "").
+
+b) In terms of data, Alyssa's proposal (xxx|xxxx|xxxxx) duplicates the prefix of
+   each repetition.  This could lead to very long patterns. Eva's proposal
+   (xxxx?x?) creates a much more concise pattern representation.
+   In terms of code, Alyssa's proposal would require a rather blunt new
+   algorithm that repeats the pattern MIN to MAX times, and would result in a
+   complete rewrite of r:repeat. Eva's proposal could be implemented with very
+   little change to the existing code.
+   Regarding both code and data, Alyssa's proposal is O(N²) while Eva's is O(N).
+
+c) Ben's proposal can be implemented in terms of BREs, while the other proposals
+   are only valid in ERE. This proposal requires no repetition of the expression
+   in the pattern at all. Interval patterns are a straight forward translation
+   of r:repeat semantics.
+
+d) In the code...

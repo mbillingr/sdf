@@ -53,12 +53,12 @@ def alt(*exprs):
 
 def repeat(min, max, expr):
     """Match repeated expression"""
-    exprs = expr * min
     if max is None:
-        exprs += expr + '*'
-    elif max > min:
-        exprs += alt(expr, "") * (max - min)
-    return seq(exprs)
+        return seq(f"{expr}{{{min},}}")
+    elif max <= min:
+        return seq(f"{expr}{{{min}}}")
+    else:
+        return seq(f"{expr}{{{min},{max}}}")
 
 
 def char_from(string):
