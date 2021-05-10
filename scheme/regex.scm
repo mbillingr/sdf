@@ -83,6 +83,26 @@
 (define chars-needing-quoting-in-brackets
   '(#\] #\^ #\-))
 
+
+(define (write-bourne-shell-grep-command expr filename)
+  (display (bourne-shell-grep-command-string expr filename)))
+
+(define (bourne-shell-grep-command-string expr filename)
+  (string-append "grep -e"
+                 (bourne-shell-quote-string expr)
+                 " "
+                 filename))
+
+(define (bourne-shell-quote-string string)
+  (list->string
+    (append (list #\')
+            (append-map (lambda (char)
+                          (if (char=? char #\')
+                              (list #\' #\\ char #\')
+                              (list char)))
+                        (string->list string))
+            (list #\'))))
+
 ;; helper functions
 
 (define (not x) (if x #f #t))
