@@ -16,8 +16,67 @@
 (define (r:bol) "^")
 (define (r:eol) "$")
 
+(define (r->string/level precedence-level)
+  (lambda (expr)
+    (let ((p (precedence expr)))
+      (let ((str-expr (cond ((seq? expr)
+                             (apply string-append (map (r->string/level p) (cdr expr))))
+                            ((alt? expr)
+                             (join "\\|" (map (r->string/level p) (cdr expr))))
+                            ((*? expr)
+                             (string-append ((r->string/level p) (cadr expr)) "*"))
+                            ((set? expr)
+                             (string-append "\\[" (cadr expr) "\\]"))
+                            (else expr))))
+        (if (< p precedence-level)
+            (group str-expr)
+            str-expr)))))
+
+(define r->string (r->string/level 0))
+
+(define (group expr)
+  (string-append "\\(" expr "\\)"))
+
+(define (join separator sequence)
+  (apply string-append
+         (cons (car sequence)
+               (append-map (lambda (expr) (list separator expr))
+                           (cdr sequence)))))
+
+(define (precedence expr)
+  (cond ((alt? expr) 1)
+        ((seq? expr) 2)
+        ((*? expr) 3)
+        ((set? expr) 4)
+        (else 5)))
+
 (define (r:seq . exprs)
-  (string-append "\\(" (apply string-append exprs) "\\)"))
+  (cons 'sequence exprs))
+
+(define (seq? expr)
+  (and (pair? expr)
+       (eq? (car expr) 'sequence)))
+
+(define (r:alt . exprs)
+  (cons 'alternative exprs))
+
+(define (alt? expr)
+  (and (pair? expr)
+       (eq? (car expr) 'alternative)))
+
+(define (r:* expr)
+  (list '* expr))
+
+(define (*? expr)
+  (and (pair? expr)
+       (eq? (car expr) '*)))
+
+(define (r:set expr)
+  (list 'set expr))
+
+(define (set? expr)
+  (and (pair? expr)
+       (eq? (car expr) 'set)))
 
 (define (r:quote string)
   (r:seq
@@ -31,18 +90,10 @@
 (define chars-needing-quoting
   '(#\. #\[ #\\ #\^ #\$ #\*))
 
-(define (r:alt . exprs)
-  (if (pair? exprs)
-      (apply r:seq
-             (cons (car exprs)
-                   (append-map (lambda (expr) (list "\\|" expr))
-                               (cdr exprs))))
-      (r:seq)))
-
 (define (r:repeat min max expr)
   (apply r:seq
          (append (make-list min expr)
-                 (cond ((not max) (list expr "*"))
+                 (cond ((not max) (list (r:* expr)))
                        ((= max min) '())
                        (else (make-list (- max min)
                                         (r:alt expr "")))))))
@@ -64,10 +115,9 @@
              (cons #\^ (quote-bracketed-contents members)))))
 
 (define (bracket string procedure)
-  (list->string
-    (append '(#\[)
-            (procedure (string->list string))
-            '(#\]))))
+  (r:set
+    (list->string
+      (procedure (string->list string)))))
 
 (define (quote-bracketed-contents members)
   (define (optional char)
@@ -107,6 +157,8 @@
 
 (define (not x) (if x #f #t))
 
+(define (cadr x) (car (cdr x)))
+
 (define (list . x) x)
 
 (define (make-list n x)
@@ -119,6 +171,15 @@
       '()
       (append (func (car list))
               (append-map func (cdr list)))))
+
+(define (map func list)
+  (map-reduce func cons '() list))
+
+(define (map-reduce mapper reducer init list)
+  (if (null? list)
+      init
+      (reducer (mapper (car list))
+               (map-reduce mapper reducer init (cdr list)))))
 
 
 (define (list->string list-of-chars)
