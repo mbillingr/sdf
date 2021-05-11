@@ -16,26 +16,27 @@
 (define (r:bol) "^")
 (define (r:eol) "$")
 
-(define (r->string/level precedence-level)
+(define (r:group expr)
+  (string-append "\\(" expr "\\)"))
+
+(define (r->string/level current-precedence)
   (lambda (expr)
-    (let ((p (precedence expr)))
+    (let ((r->s (r->string/level (precedence expr))))
       (let ((str-expr (cond ((seq? expr)
-                             (apply string-append (map (r->string/level p) (cdr expr))))
+                             (join "" (map r->s (cdr expr))))
                             ((alt? expr)
-                             (join "\\|" (map (r->string/level p) (cdr expr))))
+                             (join "\\|" (map r->s (cdr expr))))
                             ((*? expr)
-                             (string-append ((r->string/level p) (cadr expr)) "*"))
+                             (string-append (r->s (cadr expr)) "*"))
                             ((set? expr)
                              (string-append "\\[" (cadr expr) "\\]"))
                             (else expr))))
-        (if (< p precedence-level)
-            (group str-expr)
+        (if (precedes? current-precedence
+                       (precedence expr))
+            (r:group str-expr)
             str-expr)))))
 
-(define r->string (r->string/level 0))
-
-(define (group expr)
-  (string-append "\\(" expr "\\)"))
+(define r->string (r->string/level 'toplevel))
 
 (define (join separator sequence)
   (apply string-append
@@ -43,12 +44,20 @@
                (append-map (lambda (expr) (list separator expr))
                            (cdr sequence)))))
 
+(define PRECEDENCE '(toplevel
+                     alternative
+                     sequence
+                     *
+                     set
+                     character))
+
+(define (precedes? a b)
+  (memq a (cdr (memq b PRECEDENCE))))
+
 (define (precedence expr)
-  (cond ((alt? expr) 1)
-        ((seq? expr) 2)
-        ((*? expr) 3)
-        ((set? expr) 4)
-        (else 5)))
+  (or (and (pair? expr)
+           (car expr))
+      'character))
 
 (define (r:seq . exprs)
   (cons 'sequence exprs))
