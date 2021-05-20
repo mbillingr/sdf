@@ -89,8 +89,8 @@
 (define (unit-specializer procedure implicit-output-unit . implicit-input-units)
   (define (specializer specific-output-unit . specific-input-units)
     (let ((output-converter
-            (make-converter implicit-output-units
-                            specific-output-units))
+            (make-converter implicit-output-unit
+                            specific-output-unit))
           (input-converters
             (map make-converter
                  specific-input-units
@@ -104,13 +104,40 @@
       specialized-procedure))
   specializer)
 
+(define CONVERSION-TABLE (make-equal-hash-table))
+
+(define (register-unit-conversion from to proc)
+  (hash-table-set! CONVERSION-TABLE (cons from to) proc)
+  (hash-table-set! CONVERSION-TABLE (cons to from) (unit:invert proc)))
+
+(define (make-converter from to)
+  (if (equal? from to)
+      identity
+      (let ((conv (hash-table-ref/default CONVERSION-TABLE (cons from to) #f)))
+        (if conv
+            conv
+            (error (list "unknown conversion:" from "->" to))))))
+
 (define (unit:* u1 u2)
   (make-unit-conversion (compose u2 u1)
-                        (compose (unit::invert u1)
-                                 (unit::invert u2))))
+                        (compose (unit:invert u1)
+                                 (unit:invert u2))))
+
+(define (unit:expt u n)
+  (define (make-list x n)
+    (if (= n 0)
+        '()
+        (cons x (make-list x (- n 1)))))
+
+  (make-unit-conversion (apply compose (make-list u n))
+                        (apply compose (make-list (unit:invert u) n))))
+
+(define (unit:/ u1 u2)
+  (make-unit-conversion (compose u1 (unit:invert u2))
+                        (compose (unit:invert u1) u2)))
 
 (register-unit-conversion 'fahrenheit 'celsius fahrenheit-to-celsius)
-(register-unit-cenversion 'celsius 'kelvin celsius-to-kelvin)
+(register-unit-conversion 'celsius 'kelvin celsius-to-kelvin)
 
 (register-unit-conversion 'fahrenheit 'kelvin
   (unit:* fahrenheit-to-celsius celsius-to-kelvin))
@@ -138,4 +165,4 @@
     'fahrenheit               ; temperature
     'mole))                   ; amount
 
-(sphere-radius (conventional-gas-law-volume 14.7 68 1))
+(println (sphere-radius (conventional-gas-law-volume 14.7 68 1)))

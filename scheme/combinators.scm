@@ -59,11 +59,17 @@
                     (cdr indices)
                     (cdr values))))
 
-(define (map f lst)
+(define (map f . lists)
+  (if (null? (car lists))
+      '()
+      (cons (apply f (map1 car lists))
+            (apply map (cons f (map1 cdr lists))))))
+
+(define (map1 f lst)
   (if (null? lst)
-      lst
+      '()
       (cons (f (car lst))
-            (map f (cdr lst)))))
+            (map1 f (cdr lst)))))
 
 (define (exact-nonnegative-integer? i)
   #t)  ; our interpreter does not have this function yet
