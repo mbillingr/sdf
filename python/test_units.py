@@ -54,8 +54,8 @@ def test_simple_unit_conversion_system():
                                          lambda m: m*39.37)
 
     psi_to_nsm = compose(pound_to_newton,
-                         compose(unit.invert(inch_to_meter),
-                                 unit.invert(inch_to_meter)))
+                         unit.invert(inch_to_meter),
+                         unit.invert(inch_to_meter))
 
     radius_inch = unit.invert(inch_to_meter)(
         sphere_radius(

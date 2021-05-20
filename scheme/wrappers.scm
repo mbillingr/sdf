@@ -53,8 +53,8 @@
 
 (define psi-to-nsm
   (compose pound-to-newton
-           (compose (unit:invert inch-to-meter)
-                    (unit:invert inch-to-meter))))
+           (unit:invert inch-to-meter)
+           (unit:invert inch-to-meter)))
 
 ; ======================================
 ;  pre-helpers
