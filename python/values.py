@@ -59,3 +59,8 @@ class Values:
         kw = [f'{k}={repr(v)}' for k, v in self.by_keyword.items()]
         args = ', '.join(pos + kw)
         return f'Values({args})'
+
+    def __eq__(self, other):
+        return (isinstance(other, Values)
+                and self.positional == other.positional
+                and self.by_keyword == other.by_keyword)
