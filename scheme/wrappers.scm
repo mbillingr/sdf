@@ -4,6 +4,17 @@
 (include "combinators.scm")
 
 ; ======================================
+;  helpers
+; ======================================
+
+(define (println . args)
+  (if (null? args)
+      (newline)
+      (begin (display (car args))
+             (display " ")
+             (apply println (cdr args)))))
+
+; ======================================
 ;  unit impls
 ; ======================================
 
@@ -19,6 +30,9 @@
 ; ======================================
 ; chapter code
 ; ======================================
+
+; unit conversions
+; --------------------------------------
 
 (define (gas-law-volume pressure temperature amount)
   (/ (* amount gas-constant temperature) pressure))
@@ -56,19 +70,6 @@
            (unit:invert inch-to-meter)
            (unit:invert inch-to-meter)))
 
-; ======================================
-;  pre-helpers
-; ======================================
-
-(define (println . args)
-  (if (null? args)
-      (newline)
-      (begin (display (car args))
-             (display " ")
-             (apply println (cdr args)))))
-
-; ======================================
-
 (println (fahrenheit-to-celsius -40))
 (println (fahrenheit-to-celsius 32))
 (println ((unit:invert fahrenheit-to-celsius) 20))
@@ -79,3 +80,62 @@
               (psi-to-nsm 14.7)
               ((compose celsius-to-kelvin fahrenheit-to-celsius) 68)
               1))))
+
+
+
+; specialization wrappers
+; --------------------------------------
+
+(define (unit-specializer procedure implicit-output-unit . implicit-input-units)
+  (define (specializer specific-output-unit . specific-input-units)
+    (let ((output-converter
+            (make-converter implicit-output-units
+                            specific-output-units))
+          (input-converters
+            (map make-converter
+                 specific-input-units
+                 implicit-input-units)))
+      (define (specialized-procedure . arguments)
+        (output-converter
+          (apply procedure
+                 (map (lambda (converter argument) (converter argument))
+                      input-converters
+                      arguments))))
+      specialized-procedure))
+  specializer)
+
+(define (unit:* u1 u2)
+  (make-unit-conversion (compose u2 u1)
+                        (compose (unit::invert u1)
+                                 (unit::invert u2))))
+
+(register-unit-conversion 'fahrenheit 'celsius fahrenheit-to-celsius)
+(register-unit-cenversion 'celsius 'kelvin celsius-to-kelvin)
+
+(register-unit-conversion 'fahrenheit 'kelvin
+  (unit:* fahrenheit-to-celsius celsius-to-kelvin))
+
+(register-unit-conversion '(/ pound (expt inch 2))
+                          '(/ newton (expt meter 2))
+  (unit:/ pound-to-newton
+          (unit:expt inch-to-meter 2)))
+
+(register-unit-conversion '(expt inch 3) '(expt meter 3)
+  (unit:expt inch-to-meter 3))
+
+(define make-specialized-gas-law-volume
+  (unit-specializer
+    gas-law-volume
+    '(expt meter 3)             ; output (volume)
+    '(/ newton (expt meter 2))  ; pressure
+    'kelvin                     ; temperature
+    'mole))                     ; amount
+
+(define conventional-gas-law-volume
+  (make-specialized-gas-law-volume
+    '(expt inch 3)            ; output (volume)
+    '(/ pound (expt inch 2))  ; pressure
+    'fahrenheit               ; temperature
+    'mole))                   ; amount
+
+(sphere-radius (conventional-gas-law-volume 14.7 68 1))

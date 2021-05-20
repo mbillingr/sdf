@@ -1,7 +1,7 @@
 from typing import Callable
 
 
-class UnitRegistry:
+class ConversionRegistry:
     def __init__(self):
         self.inversions = {}
 
@@ -13,6 +13,6 @@ class UnitRegistry:
         return self.inversions.get(convert)
 
 
-_REGISTRY = UnitRegistry()
+_REGISTRY = ConversionRegistry()
 make_conversion = _REGISTRY.make_conversion
 invert = _REGISTRY.invert
