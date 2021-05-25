@@ -1,10 +1,98 @@
 use domain_model::{Board, Coords, Direction, Piece, PositionInfo};
 
+fn generate_moves<'a, B: Board, P: 'a + Path<B>>(board: &'a B) -> Box<dyn 'a + Iterator<Item = P>> {
+    Box::new(crown_kings(mandate_jumps(
+        board
+            .current_pieces()
+            .iter()
+            .flat_map(move |piece| evolve_paths(piece, board)),
+    )))
+}
+
+fn crown_kings<'a, B: Board, P: 'a + Path<B>>(
+    paths: impl 'a + Iterator<Item = P>,
+) -> impl 'a + Iterator<Item = P> {
+    paths.map(|path| {
+        let piece = path.last_step().unwrap().to();
+        if piece.should_be_crowned() {
+            path.append(Step::replace_piece(
+                piece.crown(),
+                piece,
+                path.last_step().unwrap().board(),
+            ))
+        } else {
+            path
+        }
+    })
+}
+
+fn mandate_jumps<'a, B: Board, P: 'a + Path<B>>(
+    paths: impl 'a + Iterator<Item = P>,
+) -> impl 'a + Iterator<Item = P> {
+    let paths: Vec<_> = paths.collect();
+    let jumps: Vec<_> = paths
+        .iter()
+        .filter(|p| p.contains_jumps())
+        .cloned()
+        .collect();
+    if jumps.is_empty() {
+        paths.into_iter()
+    } else {
+        jumps.into_iter()
+    }
+}
+
+fn evolve_paths<'a, B: Board, P: 'a + Path<B>>(
+    piece: &'a B::Piece,
+    board: &'a B,
+) -> Box<dyn Iterator<Item = P> + 'a> {
+    let mut paths = vec![];
+    let mut jumps = vec![];
+    for path in compute_next_steps::<B, P>(piece, board, Path::empty()) {
+        if path.contains_jumps() {
+            jumps.push(path);
+        } else {
+            paths.push(path);
+        }
+    }
+
+    if jumps.is_empty() {
+        Box::new(paths.into_iter())
+    } else {
+        Box::new(evolve_jumps(jumps.into_iter()))
+    }
+}
+
+fn evolve_jumps<'a, B: Board, P: 'a + Path<B>>(
+    paths: impl 'a + Iterator<Item = P>,
+) -> impl 'a + Iterator<Item = P> {
+    paths.flat_map(|path| {
+        let step = path.last_step().unwrap();
+        let paths: Vec<_> = compute_next_steps(step.to(), step.board(), path.clone()).collect();
+        if paths.is_empty() {
+            vec![path]
+        } else {
+            evolve_jumps(paths.into_iter()).collect()
+        }
+        .into_iter()
+    })
+}
+
+fn compute_next_steps<'a, B: Board, P: 'a + Path<B>>(
+    piece: &'a B::Piece,
+    board: &'a B,
+    path: P,
+) -> impl Iterator<Item = P> + 'a {
+    piece
+        .possible_directions()
+        .filter_map(move |direction| try_step(piece, board, direction, path.clone()))
+}
+
 fn try_step<B: Board, P: Path<B>>(
     piece: &B::Piece,
     board: &B,
     direction: Direction,
-    path: &P,
+    path: P,
 ) -> Option<P> {
     let new_coords = piece.coords() + direction;
 
@@ -30,39 +118,29 @@ fn try_step<B: Board, P: Path<B>>(
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum Step<B: Board> {
     Move(Coords, Coords, B),
     Jump(Coords, Coords, Coords, B),
-}
-
-impl<B: Board> PartialEq for Step<B> {
-    fn eq(&self, other: &Self) -> bool {
-        use Step::*;
-        match (self, other) {
-            (Move(a_from, a_to, _), Move(b_from, b_to, _)) => a_from == b_from && a_to == b_to,
-            (Jump(a_from, a_over, a_to, _), Jump(b_from, b_over, b_to, _)) => {
-                a_from == b_from && a_to == b_to && a_over == b_over
-            }
-            _ => false,
-        }
-    }
+    Replace(Coords, B),
 }
 
 impl<B: Board> Step<B> {
     /// Gets the piece after step is taken.
     fn to(&self) -> &B::Piece {
         match self {
-            Step::Move(_, to, board) | Step::Jump(_, _, to, board) => board
-                .get(*to)
-                .expect("could not find a piece on the board at the step's target position"),
+            Step::Move(_, to, board) | Step::Jump(_, _, to, board) | Step::Replace(to, board) => {
+                board
+                    .get(*to)
+                    .expect("could not find a piece on the board at the step's target position")
+            }
         }
     }
 
     /// Gets the board after step is taken.
     fn board(&self) -> &B {
         match self {
-            Step::Move(_, _, board) | Step::Jump(_, _, _, board) => board,
+            Step::Move(_, _, board) | Step::Jump(_, _, _, board) | Step::Replace(_, board) => board,
         }
     }
 
@@ -92,22 +170,28 @@ impl<B: Board> Step<B> {
 
     /// Create a step that replaces old_piece with new_piece on board
     fn replace_piece(new_piece: B::Piece, old_piece: &B::Piece, board: &B) -> Self {
-        unimplemented!()
+        assert_eq!(new_piece.coords(), old_piece.coords());
+        let new_board = board
+            .remove_piece_at(old_piece.coords())
+            .unwrap()
+            .insert_piece(new_piece);
+        Step::Replace(old_piece.coords(), new_board)
     }
 }
 
-trait Path<B: Board> {
+trait Path<B: Board>: Clone {
+    fn empty() -> Self;
     fn append(&self, step: Step<B>) -> Self;
+    fn last_step(&self) -> Option<&Step<B>>;
     fn contains_jumps(&self) -> bool;
 }
 
 mod domain_model {
     pub trait Board: Clone {
         type Piece: Piece;
-        type Pieces: Iterator<Item = Self::Piece>;
 
         /// Get a list of pieces belonging to the current player.
-        fn current_pieces(&self) -> Self::Pieces;
+        fn current_pieces(&self) -> &[Self::Piece];
 
         /// Test if the given coords specify a position on the board.
         fn is_position_on_board(&self, coords: Coords) -> bool;
@@ -133,6 +217,7 @@ mod domain_model {
             matches!(self.position_info(coords), PositionInfo::OccupiedByOpponent)
         }
 
+        fn insert_piece(&self, piece: Self::Piece) -> Self;
         fn move_piece(&self, old_coords: Coords, new_coords: Coords) -> Option<Self>;
         fn remove_piece_at(&self, coords: Coords) -> Option<Self>;
     }
@@ -239,37 +324,52 @@ mod tests {
     struct CheckersPiece {
         coords: Coords,
         color: Color,
+        crowned: bool,
     }
 
     impl Piece for CheckersPiece {
-        type Directions = std::array::IntoIter<Direction, 4>;
+        type Directions = std::iter::Take<std::array::IntoIter<Direction, 4>>;
         fn coords(&self) -> Coords {
             self.coords
         }
         fn should_be_crowned(&self) -> bool {
-            unimplemented!()
+            self.coords.row == CHECKERS_BOARD_SIZE
         }
         fn crown(&self) -> Self {
-            unimplemented!()
+            let mut new_king = self.clone();
+            new_king.crowned = true;
+            new_king
         }
         fn possible_directions(&self) -> Self::Directions {
-            unimplemented!()
+            let n = if self.crowned { 4 } else { 2 };
+            std::array::IntoIter::new([
+                Direction::new(1, 1),
+                Direction::new(1, -1),
+                Direction::new(-1, 1),
+                Direction::new(-1, -1),
+            ])
+            .take(n)
         }
         fn move_to(&self, coords: Coords) -> Self {
             CheckersPiece {
                 coords,
                 color: self.color,
+                crowned: self.crowned,
             }
         }
     }
 
     impl CheckersPiece {
         pub fn new(coords: Coords, color: Color) -> Self {
-            Self { coords, color }
+            Self {
+                coords,
+                color,
+                crowned: false,
+            }
         }
     }
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, PartialEq)]
     struct CheckersBoard {
         current_player: Color,
         pieces: Vec<CheckersPiece>,
@@ -277,9 +377,8 @@ mod tests {
 
     impl Board for CheckersBoard {
         type Piece = CheckersPiece;
-        type Pieces = std::vec::IntoIter<CheckersPiece>;
-        fn current_pieces(&self) -> Self::Pieces {
-            unimplemented!()
+        fn current_pieces(&self) -> &[Self::Piece] {
+            &self.pieces
         }
         fn is_position_on_board(&self, coords: Coords) -> bool {
             coords.row > 0
@@ -300,6 +399,12 @@ mod tests {
             } else {
                 PositionInfo::Unoccupied
             }
+        }
+
+        fn insert_piece(&self, piece: Self::Piece) -> Self {
+            let mut new_board = self.clone();
+            new_board.pieces.push(piece);
+            new_board
         }
 
         fn move_piece(&self, old_coords: Coords, new_coords: Coords) -> Option<Self> {
@@ -340,8 +445,16 @@ mod tests {
     }
 
     impl Path<CheckersBoard> for SharedList<Step<CheckersBoard>> {
+        fn empty() -> Self {
+            SharedList::Empty
+        }
+
         fn append(&self, step: Step<CheckersBoard>) -> Self {
             ListView::append(self, step)
+        }
+
+        fn last_step(&self) -> Option<&Step<CheckersBoard>> {
+            ListView::head(self)
         }
 
         fn contains_jumps(&self) -> bool {
@@ -394,7 +507,7 @@ mod tests {
         let piece = board.get(Coords::new(1, 1)).unwrap();
         let direction = Direction::new(-1, -1);
         let path = SharedList::Empty;
-        assert_eq!(try_step(piece, &board, direction, &path), None);
+        assert_eq!(try_step(piece, &board, direction, path), None);
     }
 
     #[test]
@@ -405,7 +518,7 @@ mod tests {
         let piece = board.get(Coords::new(1, 1)).unwrap();
         let direction = Direction::new(1, 1);
         let path = SharedList::Empty;
-        assert_eq!(try_step(piece, &board, direction, &path), None);
+        assert_eq!(try_step(piece, &board, direction, path), None);
     }
 
     #[test]
@@ -421,7 +534,7 @@ mod tests {
             piece,
             &board,
         ));
-        assert_eq!(try_step(piece, &board, direction, &path), None);
+        assert_eq!(try_step(piece, &board, direction, path), None);
     }
 
     #[test]
@@ -432,7 +545,7 @@ mod tests {
         let direction = Direction::new(1, 1);
         let path = SharedList::Empty;
         let expected = SharedList::new(Step::make_simple_move(coords + direction, piece, &board));
-        assert_eq!(try_step(piece, &board, direction, &path), Some(expected));
+        assert_eq!(try_step(piece, &board, direction, path), Some(expected));
     }
 
     #[test]
@@ -447,7 +560,7 @@ mod tests {
         let direction = target_coords - piece_coords;
         let path = SharedList::Empty;
 
-        assert_eq!(try_step(piece, &board, direction, &path), None);
+        assert_eq!(try_step(piece, &board, direction, path), None);
     }
 
     #[test]
@@ -464,7 +577,7 @@ mod tests {
         let direction = target_coords - piece_coords;
         let path = SharedList::Empty;
 
-        assert_eq!(try_step(piece, &board, direction, &path), None);
+        assert_eq!(try_step(piece, &board, direction, path), None);
     }
 
     #[test]
@@ -486,7 +599,7 @@ mod tests {
             piece,
             &board,
         ));
-        assert_eq!(try_step(piece, &board, direction, &path), Some(expected));
+        assert_eq!(try_step(piece, &board, direction, path), Some(expected));
     }
 
     #[test]
@@ -496,6 +609,146 @@ mod tests {
         let piece = board.get(piece_coords).unwrap();
         let path = SharedList::Empty;
 
-        assert_eq!(compute_next_steps(piece, board, path), None);
+        assert_eq!(compute_next_steps(piece, &board, path).next(), None);
+    }
+
+    #[test]
+    fn compute_next_steps_returns_two_moves_for_a_free_piece() {
+        let piece_coords = Coords::new(3, 3);
+        let board = CheckersBoard::new().with_piece(CheckersPiece::new(piece_coords, White));
+        let piece = board.get(piece_coords).unwrap();
+        let path = SharedList::Empty;
+
+        let moves: Vec<_> = compute_next_steps(piece, &board, path).collect();
+
+        let move_left_coords = Coords::new(4, 2);
+        let move_right_coords = Coords::new(4, 4);
+
+        assert_eq!(moves.len(), 2);
+        assert!(moves.contains(&SharedList::new(Step::make_simple_move(
+            move_left_coords,
+            piece,
+            &board
+        ))));
+        assert!(moves.contains(&SharedList::new(Step::make_simple_move(
+            move_right_coords,
+            piece,
+            &board
+        ))));
+    }
+
+    #[test]
+    fn evolve_paths_allows_all_paths_if_none_is_a_jump() {
+        let piece_coords = Coords::new(3, 3);
+        let board = CheckersBoard::new().with_piece(CheckersPiece::new(piece_coords, White));
+        let piece = board.get(piece_coords).unwrap();
+
+        let moves: Vec<_> = evolve_paths::<_, SharedList<_>>(piece, &board).collect();
+        assert_eq!(moves.len(), 2);
+    }
+
+    #[test]
+    fn evolve_paths_forces_jump() {
+        let piece_coords = Coords::new(3, 3);
+        let jumped_coords = Coords::new(4, 4);
+        let landing_coords = Coords::new(5, 5);
+        let board = CheckersBoard::new()
+            .with_piece(CheckersPiece::new(piece_coords, White))
+            .with_piece(CheckersPiece::new(jumped_coords, Black));
+        let piece = board.get(piece_coords).unwrap();
+
+        let moves: Vec<_> = evolve_paths::<_, SharedList<_>>(piece, &board).collect();
+        assert_eq!(
+            moves,
+            vec![SharedList::new(Step::make_jump(
+                landing_coords,
+                jumped_coords,
+                piece,
+                &board
+            ))]
+        );
+    }
+
+    #[test]
+    fn evolve_jump_computes_chain_of_jumps() {
+        let piece_coords = Coords::new(3, 3);
+        let jump1_coords = Coords::new(4, 4);
+        let land1_coords = Coords::new(5, 5);
+        let jump2_coords = Coords::new(6, 6);
+        let land2_coords = Coords::new(7, 7);
+
+        let board0 = CheckersBoard::new()
+            .with_piece(CheckersPiece::new(piece_coords, White))
+            .with_piece(CheckersPiece::new(jump1_coords, Black))
+            .with_piece(CheckersPiece::new(jump2_coords, Black));
+        let piece0 = board0.get(piece_coords).unwrap();
+
+        let board1 = CheckersBoard::new()
+            .with_piece(CheckersPiece::new(land1_coords, White))
+            .with_piece(CheckersPiece::new(jump2_coords, Black));
+        let piece1 = board1.get(land1_coords).unwrap();
+
+        let expected_path = Path::append(
+            &SharedList::new(Step::make_jump(land1_coords, jump1_coords, piece0, &board0)),
+            Step::make_jump(land2_coords, jump2_coords, piece1, &board1),
+        );
+
+        let moves: Vec<_> = evolve_paths::<_, SharedList<_>>(piece0, &board0).collect();
+        assert_eq!(moves, vec![expected_path]);
+    }
+
+    #[test]
+    fn generate_moves_no_move_possible() {
+        let board = CheckersBoard::new();
+        let moves: Vec<SharedList<_>> = generate_moves(&board).collect();
+        assert_eq!(moves, vec![]);
+    }
+
+    #[test]
+    fn generate_moves_for_one_piece() {
+        let board = CheckersBoard::new().with_piece(CheckersPiece::new(Coords::new(3, 3), White));
+
+        let moves: Vec<SharedList<_>> = generate_moves(&board).collect();
+        assert_eq!(moves.len(), 2);
+    }
+
+    #[test]
+    fn generate_moves_for_two_pieces() {
+        let board = CheckersBoard::new()
+            .with_piece(CheckersPiece::new(Coords::new(3, 3), White))
+            .with_piece(CheckersPiece::new(Coords::new(3, 5), White));
+
+        let moves: Vec<SharedList<_>> = generate_moves(&board).collect();
+        assert_eq!(moves.len(), 4);
+    }
+
+    #[test]
+    fn generate_constrained_moves_for_two_pieces() {
+        let board = CheckersBoard::new()
+            .with_piece(CheckersPiece::new(Coords::new(3, 3), White))
+            .with_piece(CheckersPiece::new(Coords::new(2, 4), White));
+
+        let moves: Vec<SharedList<_>> = generate_moves(&board).collect();
+        assert_eq!(moves.len(), 3);
+    }
+
+    #[test]
+    fn crown_pieces_that_move_to_home_row() {
+        let start_coords = Coords::new(CHECKERS_BOARD_SIZE - 1, 1);
+        let crown_coords = Coords::new(CHECKERS_BOARD_SIZE, 2);
+        let board0 = CheckersBoard::new().with_piece(CheckersPiece::new(start_coords, White));
+        let piece = board0.get(start_coords).unwrap();
+
+        let board1 = CheckersBoard::new().with_piece(CheckersPiece::new(crown_coords, White));
+        let moved_piece = board1.get(crown_coords).unwrap();
+        let crowned_piece = moved_piece.crown();
+
+        let expected_path = Path::append(
+            &SharedList::new(Step::make_simple_move(crown_coords, piece, &board0)),
+            Step::replace_piece(crowned_piece, moved_piece, &board1),
+        );
+
+        let moves: Vec<SharedList<_>> = generate_moves(&board0).collect();
+        assert_eq!(moves, vec![expected_path]);
     }
 }
