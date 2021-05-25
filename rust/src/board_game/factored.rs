@@ -1,0 +1,361 @@
+use crate::board_game::factored::domain_model::{Game, PartialMove};
+use std::sync::Arc;
+
+mod domain_model {
+    use std::collections::HashSet;
+    use std::fmt::Debug;
+    use std::sync::Arc;
+
+    pub type PMoveCollection<G> = Vec<PartialMove<G>>;
+    pub type EvolutionRule<G> = Arc<dyn Fn(PartialMove<G>) -> PMoveCollection<G>>;
+    pub type AggregateRule<G> = Arc<dyn Fn(Vec<PartialMove<G>>) -> PMoveCollection<G>>;
+
+    fn compose_rules<G: Game>(f: AggregateRule<G>, g: AggregateRule<G>) -> AggregateRule<G> {
+        Arc::new(move |pmoves| f(g(pmoves)))
+    }
+
+    pub trait Movable {
+        fn possible_directions(&self) -> Vec<Direction>;
+    }
+
+    pub trait Game: 'static + Clone {
+        type Players: Debug + Clone + PartialEq;
+        type PieceKind: Debug + Clone + Movable + PartialEq;
+
+        fn execute_rules(
+            initial_pmoves: PMoveCollection<Self>,
+            evolution_rules: &[EvolutionRule<Self>],
+            aggregate_rules: &[AggregateRule<Self>],
+        ) -> PMoveCollection<Self> {
+            let agg: AggregateRule<_> = aggregate_rules
+                .iter()
+                .cloned()
+                .fold(Arc::new(|x| x), compose_rules);
+            agg(initial_pmoves
+                .into_iter()
+                .flat_map(|pmove| Self::evolve_pmove(pmove, evolution_rules))
+                .collect())
+        }
+
+        fn evolve_pmove(
+            pmove: PartialMove<Self>,
+            evolution_rules: &[EvolutionRule<Self>],
+        ) -> PMoveCollection<Self> {
+            evolution_rules
+                .iter()
+                .flat_map(|rule| rule(pmove.clone()))
+                .flat_map(|new_pmove| {
+                    if new_pmove.is_finished() {
+                        vec![new_pmove]
+                    } else {
+                        Self::evolve_pmove(new_pmove, evolution_rules)
+                    }
+                })
+                .collect()
+        }
+    }
+
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct Board<G: Game> {
+        pieces: Vec<Piece<G>>,
+    }
+
+    impl<G: Game> Board<G> {
+        pub fn new() -> Self {
+            Board { pieces: vec![] }
+        }
+
+        /// Get a list of pieces belonging to the current player.
+        fn current_pieces(&self) -> impl Iterator<Item = Piece<G>> {
+            std::iter::once(unimplemented!())
+        }
+
+        /// Test if the given coords specify a position on the board.
+        fn is_position_on_board(&self, coords: Coords) -> bool {
+            unimplemented!()
+        }
+
+        /// Return a reference to the piece  at the position specified by coords.
+        fn get(&self, coords: Coords) -> Option<&Piece<G>> {
+            unimplemented!()
+        }
+
+        /// Describe what occupies the position in coords {
+        fn position_info(&self, coords: Coords) -> PositionInfo {
+            unimplemented!()
+        }
+
+        /// Equivalent to position_info returning Unoccupied
+        fn is_position_unoccupied(&self, coords: Coords) -> bool {
+            matches!(self.position_info(coords), PositionInfo::Unoccupied)
+        }
+
+        /// Equivalent to position_info returning OccupiedBySelf
+        fn is_position_occupied_by_self(&self, coords: Coords) -> bool {
+            matches!(self.position_info(coords), PositionInfo::OccupiedBySelf)
+        }
+
+        /// Equivalent to position_info returning OccupiedByOpponent
+        fn is_position_occupied_by_opponent(&self, coords: Coords) -> bool {
+            matches!(self.position_info(coords), PositionInfo::OccupiedByOpponent)
+        }
+
+        pub fn insert_piece(&self, piece: Piece<G>) -> Self {
+            let mut new_board = self.clone();
+            new_board.pieces.push(piece);
+            new_board
+        }
+
+        fn move_piece(&self, old_coords: Coords, new_coords: Coords) -> Option<Self> {
+            unimplemented!()
+        }
+
+        fn remove_piece_at(&self, coords: Coords) -> Option<Self> {
+            unimplemented!()
+        }
+    }
+
+    #[derive(Debug, Copy, Clone, PartialEq)]
+    pub struct Piece<G: Game> {
+        coords: Coords,
+        owner: G::Players,
+        kind: G::PieceKind,
+    }
+
+    impl<G: Game> Piece<G> {
+        pub fn new(coords: Coords, kind: G::PieceKind, owner: G::Players) -> Self {
+            Piece {
+                coords,
+                owner,
+                kind,
+            }
+        }
+
+        /// Get the coordinates of the piece.
+        fn coords(&self) -> Coords {
+            self.coords
+        }
+
+        /// Get the type of the piece.
+        fn kind(&self) -> &G::PieceKind {
+            &self.kind
+        }
+
+        /// Get a new identical piece except that it has given type.
+        fn new_kind(&self, kind: G::PieceKind) -> Self {
+            Piece {
+                coords: self.coords,
+                owner: self.owner.clone(),
+                kind,
+            }
+        }
+
+        /// Get a list of directions that piece may consider for a move.
+        fn possible_directions(&self) -> Vec<Direction> {
+            self.kind.possible_directions()
+        }
+
+        fn move_to(&self, coords: Coords) -> Self {
+            unimplemented!()
+        }
+    }
+
+    #[derive(Debug, Clone, PartialEq)]
+    pub enum PartialMove<G: Game> {
+        Initial(Board<G>, Piece<G>),
+        Finished(Box<Self>),
+    }
+
+    impl<G: Game> PartialMove<G> {
+        pub fn initial(board: Board<G>, piece: Piece<G>) -> Self {
+            PartialMove::Initial(board, piece)
+        }
+
+        pub fn is_empty(&self) -> bool {
+            match self {
+                PartialMove::Initial(_, _) => true,
+                PartialMove::Finished(pmove) => pmove.is_empty(),
+            }
+        }
+
+        pub fn is_finished(&self) -> bool {
+            match self {
+                PartialMove::Initial(_, _) => false,
+                PartialMove::Finished(_) => true,
+            }
+        }
+
+        fn current_board(&self) -> Board<G> {
+            unimplemented!()
+        }
+
+        fn current_piece(&self) -> Piece<G> {
+            unimplemented!()
+        }
+
+        fn new_piece_position(&self, coords: Coords) -> Self {
+            unimplemented!()
+        }
+
+        fn update_piece(&self, proc: impl Fn(&Piece<G>) -> Piece<G>) -> Self {
+            unimplemented!()
+        }
+
+        pub fn finish_move(self) -> Self {
+            PartialMove::Finished(Box::new(self))
+        }
+
+        fn capture_piece_at(&self, coords: Coords) -> Self {
+            unimplemented!()
+        }
+
+        fn does_capture_pieces(&self) -> bool {
+            unimplemented!()
+        }
+    }
+
+    struct Change<G: Game> {
+        board: Board<G>,
+        piece: Piece<G>,
+        flags: Flags,
+    }
+
+    impl<G: Game> Change<G> {
+        fn new(board: Board<G>, piece: Piece<G>, flags: Flags) -> Self {
+            Change {
+                board,
+                piece,
+                flags,
+            }
+        }
+
+        fn board(&self) -> &Board<G> {
+            &self.board
+        }
+
+        fn piece(&self) -> &Piece<G> {
+            &self.piece
+        }
+
+        fn flags(&self) -> &Flags {
+            &self.flags
+        }
+    }
+
+    pub struct Flags(HashSet<&'static str>);
+
+    pub enum PositionInfo {
+        Unoccupied,
+        OccupiedBySelf,
+        OccupiedByOpponent,
+    }
+
+    #[derive(Debug, Copy, Clone, PartialEq)]
+    pub struct Coords {
+        pub row: i16,
+        pub col: i16,
+    }
+
+    impl Coords {
+        pub fn new(row: i16, col: i16) -> Self {
+            Self { row, col }
+        }
+    }
+
+    #[derive(Debug, Copy, Clone, PartialEq)]
+    pub struct Offset {
+        pub row_step: i16,
+        pub col_step: i16,
+    }
+
+    impl Offset {
+        pub fn new(row: i16, col: i16) -> Self {
+            Self {
+                row_step: row,
+                col_step: col,
+            }
+        }
+    }
+
+    pub type Direction = Offset;
+
+    impl std::ops::Add<Offset> for Coords {
+        type Output = Coords;
+        fn add(self, ofs: Offset) -> Self::Output {
+            Coords {
+                row: self.row + ofs.row_step,
+                col: self.col + ofs.col_step,
+            }
+        }
+    }
+
+    impl std::ops::Add<Coords> for Offset {
+        type Output = Coords;
+        fn add(self, pos: Coords) -> Self::Output {
+            Coords {
+                row: self.row_step + pos.row,
+                col: self.col_step + pos.col,
+            }
+        }
+    }
+
+    impl std::ops::Sub<Coords> for Coords {
+        type Output = Offset;
+        fn sub(self, rhs: Coords) -> Self::Output {
+            Offset {
+                row_step: self.row - rhs.row,
+                col_step: self.col - rhs.col,
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::board_game::factored::domain_model::{
+        Board, Coords, Direction, Movable, PMoveCollection, Piece,
+    };
+
+    #[derive(Debug, Copy, Clone, PartialEq)]
+    struct TestGame;
+    impl Game for TestGame {
+        type Players = i8;
+        type PieceKind = i8;
+    }
+
+    impl TestGame {
+        fn new_board() -> Board<Self> {
+            Board::new()
+        }
+    }
+
+    impl Movable for i8 {
+        fn possible_directions(&self) -> Vec<Direction> {
+            unimplemented!()
+        }
+    }
+
+    #[test]
+    fn execute_rules_no_moves_no_rules() {
+        let resulting_moves = TestGame::execute_rules(vec![], &[], &[]);
+        assert_eq!(resulting_moves, vec![]);
+    }
+
+    #[test]
+    fn execute_rules_one_move_trivial_rules() {
+        let piece = Piece::new(Coords::new(0, 0), 0, 0);
+        let board = TestGame::new_board().insert_piece(piece);
+
+        fn finish(pmove: PartialMove<TestGame>) -> PMoveCollection<TestGame> {
+            vec![pmove.finish_move()]
+        }
+
+        let resulting_moves = TestGame::execute_rules(
+            vec![PartialMove::initial(board, piece)],
+            &[Arc::new(finish)],
+            &[],
+        );
+        assert_eq!(resulting_moves.len(), 1);
+    }
+}
