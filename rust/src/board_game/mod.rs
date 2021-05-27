@@ -1,2 +1,2 @@
-mod factored;
-mod monolithic;
+pub mod factored;
+pub mod monolithic;

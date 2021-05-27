@@ -1,6 +1,8 @@
 use domain_model::{Board, Coords, Direction, Piece, PositionInfo};
 
-fn generate_moves<'a, B: Board, P: 'a + Path<B>>(board: &'a B) -> Box<dyn 'a + Iterator<Item = P>> {
+pub fn generate_moves<'a, B: Board, P: 'a + Path<B>>(
+    board: &'a B,
+) -> Box<dyn 'a + Iterator<Item = P>> {
     Box::new(crown_kings(mandate_jumps(
         board
             .current_pieces()
@@ -119,7 +121,7 @@ fn try_step<B: Board, P: Path<B>>(
 }
 
 #[derive(Debug, PartialEq)]
-enum Step<B: Board> {
+pub enum Step<B: Board> {
     Move(Coords, Coords, B),
     Jump(Coords, Coords, Coords, B),
     Replace(Coords, B),
@@ -144,7 +146,7 @@ impl<B: Board> Step<B> {
         }
     }
 
-    fn is_jump(&self) -> bool {
+    pub fn is_jump(&self) -> bool {
         match self {
             Step::Jump(_, _, _, _) => true,
             _ => false,
@@ -179,7 +181,7 @@ impl<B: Board> Step<B> {
     }
 }
 
-trait Path<B: Board>: Clone {
+pub trait Path<B: Board>: Clone {
     fn empty() -> Self;
     fn append(&self, step: Step<B>) -> Self;
     fn last_step(&self) -> Option<&Step<B>>;
