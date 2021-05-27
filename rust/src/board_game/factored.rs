@@ -115,13 +115,6 @@ mod domain_model {
             self.pieces.iter().find(|piece| piece.coords() == coords)
         }
 
-        /// Return a mutable reference to the piece at the position specified by coords.
-        pub fn get_mut(&mut self, coords: Coords) -> Option<&mut Piece<G>> {
-            self.pieces
-                .iter_mut()
-                .find(|piece| piece.coords() == coords)
-        }
-
         /// Describe what occupies the position in coords {
         pub fn position_info(&self, coords: Coords) -> PositionInfo {
             if let Some(piece) = self.get(coords) {
@@ -225,17 +218,17 @@ mod domain_model {
         }
 
         /// Get the coordinates of the piece.
-        fn coords(&self) -> Coords {
+        pub fn coords(&self) -> Coords {
             self.coords
         }
 
         /// Get the type of the piece.
-        fn kind(&self) -> &G::PieceKind {
+        pub fn kind(&self) -> &G::PieceKind {
             &self.kind
         }
 
         /// Get a new identical piece except that it has given type.
-        fn new_kind(&self, kind: G::PieceKind) -> Self {
+        pub fn new_kind(&self, kind: G::PieceKind) -> Self {
             Piece {
                 coords: self.coords,
                 owner: self.owner.clone(),
@@ -268,6 +261,7 @@ mod domain_model {
         Initial(Board<G>, Piece<G>),
         Move(Coords, Coords, Box<Self>),
         Capture(Coords, Box<Self>),
+        Update(Piece<G>, Box<Self>),
         Finished(Box<Self>),
     }
 
@@ -279,7 +273,9 @@ mod domain_model {
         pub fn is_empty(&self) -> bool {
             match self {
                 PartialMove::Initial(_, _) => true,
-                PartialMove::Move(_, _, _) | PartialMove::Capture(_, _) => false,
+                PartialMove::Move(_, _, _)
+                | PartialMove::Capture(_, _)
+                | PartialMove::Update(_, _) => false,
                 PartialMove::Finished(pmove) => pmove.is_empty(),
             }
         }
@@ -287,26 +283,29 @@ mod domain_model {
         pub fn is_finished(&self) -> bool {
             match self {
                 PartialMove::Initial(_, _) => false,
-                PartialMove::Move(_, _, _) | PartialMove::Capture(_, _) => false,
+                PartialMove::Move(_, _, _)
+                | PartialMove::Capture(_, _)
+                | PartialMove::Update(_, _) => false,
                 PartialMove::Finished(_) => true,
             }
         }
 
         pub fn current_board(&self) -> Board<G> {
-            self.build_board()
-        }
-
-        fn build_board(&self) -> Board<G> {
             match self {
                 PartialMove::Initial(board, _) => board.clone(),
                 PartialMove::Move(old_coords, new_coords, parent) => parent
-                    .build_board()
+                    .current_board()
                     .move_piece(*old_coords, *new_coords)
                     .unwrap(),
                 PartialMove::Capture(coords, parent) => {
-                    parent.build_board().remove_piece_at(*coords).unwrap()
+                    parent.current_board().remove_piece_at(*coords).unwrap()
                 }
-                PartialMove::Finished(pmove) => pmove.build_board(),
+                PartialMove::Update(piece, parent) => parent
+                    .current_board()
+                    .remove_piece_at(parent.current_piece().coords())
+                    .unwrap()
+                    .insert_piece(piece.clone()),
+                PartialMove::Finished(pmove) => pmove.current_board(),
             }
         }
 
@@ -315,6 +314,7 @@ mod domain_model {
                 PartialMove::Initial(_, piece) => piece.clone(),
                 PartialMove::Move(_, coords, parent) => parent.current_piece().move_to(*coords),
                 PartialMove::Capture(_, parent) => parent.current_piece(),
+                PartialMove::Update(piece, _) => piece.clone(),
                 PartialMove::Finished(parent) => parent.current_piece(),
             }
         }
@@ -324,8 +324,9 @@ mod domain_model {
             PartialMove::Move(old_coords, coords, Box::new(self))
         }
 
-        pub fn update_piece(&self, proc: impl Fn(&Piece<G>) -> Piece<G>) -> Self {
-            unimplemented!()
+        pub fn update_piece(self, proc: impl Fn(&Piece<G>) -> Piece<G>) -> Self {
+            let piece = proc(&self.current_piece());
+            PartialMove::Update(piece, Box::new(self))
         }
 
         pub fn finish_move(self) -> Self {
@@ -337,7 +338,13 @@ mod domain_model {
         }
 
         pub fn does_capture_pieces(&self) -> bool {
-            unimplemented!()
+            match self {
+                PartialMove::Initial(_, _) => false,
+                PartialMove::Capture(_, _) => true,
+                PartialMove::Move(_, _, parent)
+                | PartialMove::Update(_, parent)
+                | PartialMove::Finished(parent) => parent.does_capture_pieces(),
+            }
         }
 
         pub fn compute_new_position(&self, direction: Direction, distance: i16) -> Coords {
@@ -557,7 +564,7 @@ mod test_checkers {
         pub fn new() -> Self {
             Checkers {
                 evolution_rules: vec![Arc::new(Self::simple_move), Arc::new(Self::jump)],
-                aggregate_rules: vec![],
+                aggregate_rules: vec![Arc::new(Self::coronation), Arc::new(Self::require_jumps)],
             }
         }
 
@@ -624,6 +631,41 @@ mod test_checkers {
                 })
                 .collect()
         }
+
+        fn coronation(pmoves: PMoveCollection<Self>) -> PMoveCollection<Self> {
+            pmoves
+                .into_iter()
+                .map(|pmove| {
+                    let piece = pmove.current_piece();
+                    if Self::should_be_crowned(&piece) {
+                        pmove.update_piece(Self::crown_piece)
+                    } else {
+                        pmove
+                    }
+                })
+                .collect()
+        }
+
+        fn should_be_crowned(piece: &Piece<Self>) -> bool {
+            piece.coords().row == Self::BOARD_MAX_ROW
+        }
+
+        fn crown_piece(piece: &Piece<Self>) -> Piece<Self> {
+            piece.new_kind(CheckersPiece::King)
+        }
+
+        fn require_jumps(pmoves: PMoveCollection<Self>) -> PMoveCollection<Self> {
+            let jumps: PMoveCollection<_> = pmoves
+                .iter()
+                .cloned()
+                .filter(PartialMove::does_capture_pieces)
+                .collect();
+            if jumps.is_empty() {
+                pmoves
+            } else {
+                jumps
+            }
+        }
     }
 
     #[derive(Debug, Copy, Clone, PartialEq)]
@@ -688,6 +730,37 @@ mod test_checkers {
         let piece_coords = Coords::new(1, 1);
         let jumped_coords = Coords::new(2, 2);
         let landing_coords = Coords::new(3, 3);
+        let board = Board::new()
+            .insert_piece(Piece::new(piece_coords, CheckersPiece::Normal, White))
+            .insert_piece(Piece::new(jumped_coords, CheckersPiece::Normal, Black));
+        let moves = Checkers::new().execute_game_rules(&board);
+        assert_eq!(moves.len(), 1);
+        assert_eq!(moves[0].current_board().get(jumped_coords), None);
+        assert_eq!(
+            moves[0].current_board().get(landing_coords),
+            Some(&Piece::new(landing_coords, CheckersPiece::Normal, White))
+        );
+    }
+
+    #[test]
+    fn crown_a_piece_that_moves_into_the_front_line() {
+        let piece_coords = Coords::new(7, 1);
+        let move_coords = Coords::new(8, 2);
+        let board =
+            Board::new().insert_piece(Piece::new(piece_coords, CheckersPiece::Normal, White));
+        let moves = Checkers::new().execute_game_rules(&board);
+        assert_eq!(moves.len(), 1);
+        assert_eq!(
+            moves[0].current_board().get(move_coords),
+            Some(&Piece::new(move_coords, CheckersPiece::King, White))
+        );
+    }
+
+    #[test]
+    fn enforce_jump() {
+        let piece_coords = Coords::new(3, 3);
+        let jumped_coords = Coords::new(4, 4);
+        let landing_coords = Coords::new(5, 5);
         let board = Board::new()
             .insert_piece(Piece::new(piece_coords, CheckersPiece::Normal, White))
             .insert_piece(Piece::new(jumped_coords, CheckersPiece::Normal, Black));
