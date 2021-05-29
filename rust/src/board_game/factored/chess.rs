@@ -1,5 +1,5 @@
 use crate::board_game::factored::board_game_domain_model::{
-    AggregateRule, Direction, EvolutionRule, Game, Movable, PMoveCollection, PartialMove,
+    AggregateRule, Direction, EvolutionRule, Game, Movable, PMoveCollection, PartialMove, Piece,
     PositionInfo,
 };
 use std::fmt;
@@ -36,7 +36,7 @@ impl Chess {
     pub fn new() -> Self {
         Chess {
             evolution_rules: vec![Arc::new(Self::move_dispatch)],
-            aggregate_rules: vec![],
+            aggregate_rules: vec![Arc::new(Self::promotion)],
         }
     }
 
@@ -46,6 +46,7 @@ impl Chess {
                 Self::multidirectional_move(pmove)
             }
             ChessPiece::Knight | ChessPiece::King => Self::simple_move(pmove),
+            ChessPiece::Pawn => Self::pawn_move(pmove),
         }
     }
 
@@ -118,6 +119,80 @@ impl Chess {
             .take_while(Option::is_some)
             .filter_map(|x| x)
     }
+
+    fn pawn_move(pmove: PartialMove<Chess>) -> PMoveCollection<Self> {
+        let board = pmove.current_board();
+
+        let mut moves = PMoveCollection::new();
+
+        let normal_landing = pmove.compute_new_position(Direction::new(1, 0), 1);
+        if board.is_position_unoccupied(normal_landing) {
+            moves.push(
+                pmove
+                    .clone()
+                    .new_piece_position(normal_landing)
+                    .finish_move(),
+            );
+        }
+
+        if pmove.current_piece().coords().row == 2 {
+            let extra_landing = pmove.compute_new_position(Direction::new(1, 0), 2);
+            if board.is_position_unoccupied(extra_landing) {
+                moves.push(
+                    pmove
+                        .clone()
+                        .new_piece_position(extra_landing)
+                        .finish_move(),
+                );
+            }
+        }
+
+        for capture_direction in vec![Direction::new(1, -1), Direction::new(1, 1)] {
+            let landing = pmove.compute_new_position(capture_direction, 1);
+            if board.is_position_occupied_by_opponent(landing) {
+                moves.push(
+                    pmove
+                        .clone()
+                        .new_piece_position(landing)
+                        .capture_piece_at(landing)
+                        .finish_move(),
+                );
+            }
+        }
+
+        moves
+    }
+
+    fn promotion(pmoves: PMoveCollection<Self>) -> PMoveCollection<Self> {
+        pmoves
+            .into_iter()
+            .flat_map(|pmove| {
+                let piece = pmove.current_piece();
+                if let Some(new_kinds) = Self::should_be_promoted(&piece) {
+                    new_kinds
+                        .into_iter()
+                        .map(|new_kind| pmove.clone().update_piece(|p| p.new_kind(new_kind)))
+                        .collect()
+                } else {
+                    vec![pmove]
+                }
+            })
+            .collect()
+    }
+
+    fn should_be_promoted(piece: &Piece<Self>) -> Option<Vec<ChessPiece>> {
+        if let ChessPiece::Pawn = piece.kind() {
+            if piece.coords().row == Self::BOARD_MAX_ROW {
+                return Some(vec![
+                    ChessPiece::Queen,
+                    ChessPiece::Rook,
+                    ChessPiece::Bishop,
+                    ChessPiece::Knight,
+                ]);
+            }
+        }
+        None
+    }
 }
 
 impl fmt::Debug for Chess {
@@ -139,6 +214,7 @@ pub enum ChessPiece {
     Bishop,
     Queen,
     King,
+    Pawn,
 }
 
 impl Movable for ChessPiece {
@@ -176,6 +252,7 @@ impl Movable for ChessPiece {
                 Direction::new(1, 0),
                 Direction::new(-1, 0),
             ],
+            ChessPiece::Pawn => vec![], // pawns have special movement logic
         }
     }
 }
@@ -390,5 +467,86 @@ mod tests {
         assert!(directions.contains(&Direction::new(-1, 0)));
         assert!(directions.contains(&Direction::new(0, 1)));
         assert!(directions.contains(&Direction::new(0, -1)));
+    }
+
+    #[test]
+    fn pawn_moves_one_row_forward() {
+        let piece = Piece::new(Coords::new(5, 5), ChessPiece::Pawn, White);
+        let pmove = PartialMove::initial(Board::new(), piece.clone());
+
+        let moves = Chess::pawn_move(pmove);
+
+        assert_eq!(moves.len(), 1);
+        assert_eq!(moves[0].current_piece().coords(), Coords::new(6, 5));
+    }
+
+    #[test]
+    fn pawns_cant_move_over_own_pieces() {
+        let piece = Piece::new(Coords::new(5, 5), ChessPiece::Pawn, White);
+        let board = Board::new()
+            .insert_piece(piece.clone())
+            .insert_piece(Piece::new(Coords::new(6, 5), ChessPiece::Rook, White));
+        let pmove = PartialMove::initial(board, piece.clone());
+
+        let moves = Chess::pawn_move(pmove);
+
+        assert_eq!(moves.len(), 0);
+    }
+
+    #[test]
+    fn pawns_cant_move_over_opponent_pieces() {
+        let piece = Piece::new(Coords::new(5, 5), ChessPiece::Pawn, White);
+        let board = Board::new()
+            .insert_piece(piece.clone())
+            .insert_piece(Piece::new(Coords::new(6, 5), ChessPiece::Rook, Black));
+        let pmove = PartialMove::initial(board, piece.clone());
+
+        let moves = Chess::pawn_move(pmove);
+
+        assert_eq!(moves.len(), 0);
+    }
+
+    #[test]
+    fn pawns_can_capture_opponent_pieces() {
+        let piece = Piece::new(Coords::new(5, 5), ChessPiece::Pawn, White);
+        let board = Board::new()
+            .insert_piece(piece.clone())
+            .insert_piece(Piece::new(Coords::new(6, 4), ChessPiece::Rook, Black))
+            .insert_piece(Piece::new(Coords::new(6, 6), ChessPiece::Rook, Black));
+        let pmove = PartialMove::initial(board, piece.clone());
+
+        let moves = Chess::pawn_move(pmove);
+
+        assert_eq!(moves.len(), 3);
+    }
+
+    #[test]
+    fn pawn_can_initially_move_two_rows_forward() {
+        let piece = Piece::new(Coords::new(2, 5), ChessPiece::Pawn, White);
+        let pmove = PartialMove::initial(Board::new(), piece.clone());
+
+        let moves = Chess::pawn_move(pmove);
+
+        assert_eq!(moves.len(), 2);
+        assert_eq!(moves[0].current_piece().coords(), Coords::new(3, 5));
+        assert_eq!(moves[1].current_piece().coords(), Coords::new(4, 5));
+    }
+
+    #[test]
+    fn promote_pawns_moving_into_opponent_home() {
+        let piece = Piece::new(Coords::new(7, 5), ChessPiece::Pawn, White);
+        let board = Board::new().insert_piece(piece.clone());
+
+        let moves = Chess::new().execute_game_rules(&board);
+
+        assert_eq!(moves.len(), 4);
+        let final_pieces: Vec<_> = moves
+            .iter()
+            .map(|pmove| *pmove.current_piece().kind())
+            .collect();
+        assert!(final_pieces.contains(&ChessPiece::Queen));
+        assert!(final_pieces.contains(&ChessPiece::Rook));
+        assert!(final_pieces.contains(&ChessPiece::Bishop));
+        assert!(final_pieces.contains(&ChessPiece::Knight));
     }
 }
