@@ -1,6 +1,6 @@
 use crate::board_game::factored::board_game_domain_model::{
-    AggregateRule, Direction, EvolutionRule, Game, Movable, PMoveCollection, PartialMove, Piece,
-    PositionInfo,
+    AggregateRule, Board, Direction, EvolutionRule, Game, Movable, PMoveCollection, PartialMove,
+    Piece, PositionInfo,
 };
 use std::fmt;
 use std::sync::Arc;
@@ -34,6 +34,13 @@ impl Game for Chess {
 
 impl Chess {
     pub fn new() -> Self {
+        Chess {
+            evolution_rules: vec![Arc::new(Self::move_dispatch)],
+            aggregate_rules: vec![Arc::new(Self::promotion), Arc::new(Self::forbid_self_check)],
+        }
+    }
+
+    pub fn new_checker_check() -> Self {
         Chess {
             evolution_rules: vec![Arc::new(Self::move_dispatch)],
             aggregate_rules: vec![Arc::new(Self::promotion)],
@@ -193,6 +200,23 @@ impl Chess {
         }
         None
     }
+
+    fn forbid_self_check(pmoves: PMoveCollection<Self>) -> PMoveCollection<Self> {
+        pmoves
+            .into_iter()
+            .filter(|pmove| !Self::current_king_checked(&pmove.current_board()))
+            .collect()
+    }
+
+    fn current_king_checked(board: &Board<Self>) -> bool {
+        let board = board.new_player(board.current_player().next());
+        let opponent_moves = Self::new_checker_check().execute_game_rules(&board);
+        let res = opponent_moves
+            .iter()
+            .flat_map(|pmove| pmove.captured_pieces())
+            .any(|piece| piece.kind() == &ChessPiece::King);
+        res
+    }
 }
 
 impl fmt::Debug for Chess {
@@ -205,6 +229,15 @@ impl fmt::Debug for Chess {
 pub enum Color {
     White,
     Black,
+}
+
+impl Color {
+    pub fn next(&self) -> Self {
+        match self {
+            Color::White => Color::Black,
+            Color::Black => Color::White,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -548,5 +581,30 @@ mod tests {
         assert!(final_pieces.contains(&ChessPiece::Rook));
         assert!(final_pieces.contains(&ChessPiece::Bishop));
         assert!(final_pieces.contains(&ChessPiece::Knight));
+    }
+
+    #[test]
+    fn moves_may_not_end_in_own_king_being_checked() {
+        let board = Board::new()
+            .insert_piece(Piece::new(Coords::new(1, 1), ChessPiece::King, White))
+            .insert_piece(Piece::new(Coords::new(1, 2), ChessPiece::Queen, Black));
+        let moves = Chess::new().execute_game_rules(&board);
+
+        // only valid move is to capture the opponent queen
+        assert_eq!(moves.len(), 1);
+        assert!(moves[0].does_capture_pieces());
+        assert_eq!(moves[0].current_piece().coords(), Coords::new(1, 2));
+    }
+
+    #[test]
+    fn no_moves_possible_in_check_mate() {
+        let board = Board::new()
+            .insert_piece(Piece::new(Coords::new(1, 1), ChessPiece::King, White))
+            .insert_piece(Piece::new(Coords::new(2, 1), ChessPiece::Pawn, White))
+            .insert_piece(Piece::new(Coords::new(2, 2), ChessPiece::Pawn, White))
+            .insert_piece(Piece::new(Coords::new(1, 3), ChessPiece::Queen, Black));
+        let moves = Chess::new().execute_game_rules(&board);
+
+        assert_eq!(moves.len(), 0);
     }
 }

@@ -88,6 +88,10 @@ impl<G: Game> Board<G> {
         }
     }
 
+    pub fn current_player(&self) -> &G::Players {
+        &self.current_player
+    }
+
     /// Get a list of pieces belonging to the current player.
     fn current_pieces(&self) -> impl Iterator<Item = Piece<G>> + '_ {
         let current_player = self.current_player.clone();
@@ -136,6 +140,12 @@ impl<G: Game> Board<G> {
     /// Equivalent to position_info returning OccupiedByOpponent
     pub fn is_position_occupied_by_opponent(&self, coords: Coords) -> bool {
         matches!(self.position_info(coords), PositionInfo::OccupiedByOpponent)
+    }
+
+    pub fn new_player(&self, player: G::Players) -> Self {
+        let mut new_board = self.clone();
+        new_board.current_player = player;
+        new_board
     }
 
     pub fn insert_piece(&self, piece: Piece<G>) -> Self {
@@ -304,6 +314,16 @@ impl<G: Game> PartialMove<G> {
         }
     }
 
+    pub fn parent(&self) -> Option<&Self> {
+        match self {
+            PartialMove::Initial(_, _) => None,
+            PartialMove::Move(_, _, parent)
+            | PartialMove::Capture(_, parent)
+            | PartialMove::Update(_, parent)
+            | PartialMove::Finished(parent) => Some(&**parent),
+        }
+    }
+
     pub fn current_piece(&self) -> Piece<G> {
         match self {
             PartialMove::Initial(_, piece) => piece.clone(),
@@ -340,6 +360,25 @@ impl<G: Game> PartialMove<G> {
             | PartialMove::Update(_, parent)
             | PartialMove::Finished(parent) => parent.does_capture_pieces(),
         }
+    }
+
+    pub fn captured_pieces(&self) -> impl '_ + Iterator<Item = Piece<G>> {
+        let mut cursor = Some(self);
+        (0..)
+            .map(move |_| {
+                let pmove = cursor;
+                cursor = cursor.and_then(|c| c.parent());
+                pmove
+            })
+            .take_while(Option::is_some)
+            .filter_map(|x| x)
+            .filter_map(|pmove| {
+                if let PartialMove::Capture(coords, parent) = pmove {
+                    parent.current_board().get(*coords).cloned()
+                } else {
+                    None
+                }
+            })
     }
 
     pub fn compute_new_position(&self, direction: Direction, distance: i16) -> Coords {
