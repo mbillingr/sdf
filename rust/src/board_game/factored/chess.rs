@@ -42,7 +42,9 @@ impl Chess {
 
     fn move_dispatch(pmove: PartialMove<Self>) -> PMoveCollection<Self> {
         match pmove.current_piece().kind() {
-            ChessPiece::Rook | ChessPiece::Bishop => Self::multidirectional_move(pmove),
+            ChessPiece::Rook | ChessPiece::Bishop | ChessPiece::Queen => {
+                Self::multidirectional_move(pmove)
+            }
             ChessPiece::Knight => Self::simple_move(pmove),
         }
     }
@@ -135,6 +137,7 @@ pub enum ChessPiece {
     Rook,
     Knight,
     Bishop,
+    Queen,
 }
 
 impl Movable for ChessPiece {
@@ -161,6 +164,16 @@ impl Movable for ChessPiece {
                 Direction::new(1, -1),
                 Direction::new(-1, 1),
                 Direction::new(-1, -1),
+            ],
+            ChessPiece::Queen => vec![
+                Direction::new(1, 1),
+                Direction::new(1, -1),
+                Direction::new(-1, 1),
+                Direction::new(-1, -1),
+                Direction::new(0, 1),
+                Direction::new(0, -1),
+                Direction::new(1, 0),
+                Direction::new(-1, 0),
             ],
         }
     }
@@ -341,12 +354,26 @@ mod tests {
     }
 
     #[test]
-    fn bishop_moves_horizontally_or_vertically() {
+    fn bishop_moves_diagonally() {
         let directions = ChessPiece::Bishop.possible_directions();
         assert_eq!(directions.len(), 4);
         assert!(directions.contains(&Direction::new(1, 1)));
         assert!(directions.contains(&Direction::new(-1, 1)));
         assert!(directions.contains(&Direction::new(1, -1)));
         assert!(directions.contains(&Direction::new(-1, -1)));
+    }
+
+    #[test]
+    fn queen_moves_diagonally_horizontally_or_vertically() {
+        let directions = ChessPiece::Queen.possible_directions();
+        assert_eq!(directions.len(), 8);
+        assert!(directions.contains(&Direction::new(1, 1)));
+        assert!(directions.contains(&Direction::new(-1, 1)));
+        assert!(directions.contains(&Direction::new(1, -1)));
+        assert!(directions.contains(&Direction::new(-1, -1)));
+        assert!(directions.contains(&Direction::new(1, 0)));
+        assert!(directions.contains(&Direction::new(-1, 0)));
+        assert!(directions.contains(&Direction::new(0, 1)));
+        assert!(directions.contains(&Direction::new(0, -1)));
     }
 }
