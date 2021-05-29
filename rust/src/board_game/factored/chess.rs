@@ -42,7 +42,7 @@ impl Chess {
 
     fn move_dispatch(pmove: PartialMove<Self>) -> PMoveCollection<Self> {
         match pmove.current_piece().kind() {
-            ChessPiece::Rook => Self::multidirectional_move(pmove),
+            ChessPiece::Rook | ChessPiece::Bishop => Self::multidirectional_move(pmove),
             ChessPiece::Knight => Self::simple_move(pmove),
         }
     }
@@ -134,6 +134,7 @@ pub enum Color {
 pub enum ChessPiece {
     Rook,
     Knight,
+    Bishop,
 }
 
 impl Movable for ChessPiece {
@@ -154,6 +155,12 @@ impl Movable for ChessPiece {
                 Direction::new(-2, -1),
                 Direction::new(1, -2),
                 Direction::new(-1, -2),
+            ],
+            ChessPiece::Bishop => vec![
+                Direction::new(1, 1),
+                Direction::new(1, -1),
+                Direction::new(-1, 1),
+                Direction::new(-1, -1),
             ],
         }
     }
@@ -331,5 +338,15 @@ mod tests {
         assert!(directions.contains(&Direction::new(-1, 2)));
         assert!(directions.contains(&Direction::new(1, -2)));
         assert!(directions.contains(&Direction::new(-1, -2)));
+    }
+
+    #[test]
+    fn bishop_moves_horizontally_or_vertically() {
+        let directions = ChessPiece::Bishop.possible_directions();
+        assert_eq!(directions.len(), 4);
+        assert!(directions.contains(&Direction::new(1, 1)));
+        assert!(directions.contains(&Direction::new(-1, 1)));
+        assert!(directions.contains(&Direction::new(1, -1)));
+        assert!(directions.contains(&Direction::new(-1, -1)));
     }
 }
