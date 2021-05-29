@@ -1,6 +1,6 @@
 use crate::board_game::factored::board_game_domain_model::{
-    AggregateRule, Board, Direction, EvolutionRule, Game, Movable, PMoveCollection, PartialMove,
-    Piece, PositionInfo,
+    AggregateRule, Board, Coords, Direction, EvolutionRule, Game, Movable, PMoveCollection,
+    PartialMove, Piece, PositionInfo,
 };
 use std::fmt;
 use std::sync::Arc;
@@ -35,24 +35,30 @@ impl Game for Chess {
 impl Chess {
     pub fn new() -> Self {
         Chess {
-            evolution_rules: vec![Arc::new(Self::move_dispatch)],
-            aggregate_rules: vec![Arc::new(Self::promotion), Arc::new(Self::forbid_self_check)],
+            evolution_rules: vec![Arc::new(Self::move_dispatch), Arc::new(Self::castling)],
+            aggregate_rules: vec![
+                Arc::new(Self::promotion),
+                Arc::new(Self::mark_moved),
+                Arc::new(Self::forbid_self_check),
+            ],
         }
     }
 
     pub fn new_checker_check() -> Self {
         Chess {
-            evolution_rules: vec![Arc::new(Self::move_dispatch)],
+            evolution_rules: vec![Arc::new(Self::move_dispatch), Arc::new(Self::castling)],
             aggregate_rules: vec![Arc::new(Self::promotion)],
         }
     }
 
     fn move_dispatch(pmove: PartialMove<Self>) -> PMoveCollection<Self> {
         match pmove.current_piece().kind() {
-            ChessPiece::Rook | ChessPiece::Bishop | ChessPiece::Queen => {
+            ChessPiece::UnmovedRook | ChessPiece::Rook | ChessPiece::Bishop | ChessPiece::Queen => {
                 Self::multidirectional_move(pmove)
             }
-            ChessPiece::Knight | ChessPiece::King => Self::simple_move(pmove),
+            ChessPiece::Knight | ChessPiece::UnmovedKing | ChessPiece::King => {
+                Self::simple_move(pmove)
+            }
             ChessPiece::Pawn => Self::pawn_move(pmove),
         }
     }
@@ -217,6 +223,55 @@ impl Chess {
             .any(|piece| piece.kind() == &ChessPiece::King);
         res
     }
+
+    fn castling(pmove: PartialMove<Self>) -> PMoveCollection<Self> {
+        if pmove.current_piece().kind() == &ChessPiece::UnmovedKing {
+            let board = pmove.current_board();
+            let mut castle_moves = PMoveCollection::new();
+            for (rook_pos, direction) in vec![(Coords::new(1, 1), -1), (Coords::new(1, 8), 1)] {
+                if let Some(rook) = board
+                    .get(rook_pos)
+                    .filter(|piece| piece.kind() == &ChessPiece::UnmovedRook)
+                {
+                    let direction = Direction::new(0, direction);
+                    let king_pos = pmove.current_piece().coords();
+                    let king_out_pos = king_pos + direction * 2;
+                    let rook_out_pos = king_pos + direction;
+                    castle_moves.push(
+                        pmove
+                            .clone()
+                            .update_piece(|king| king.new_kind(ChessPiece::King))
+                            .new_piece_position(king_out_pos)
+                            .move_another_piece(rook.clone())
+                            .update_piece(|rook| rook.new_kind(ChessPiece::Rook))
+                            .new_piece_position(rook_out_pos)
+                            .finish_move(),
+                    )
+                }
+            }
+            castle_moves
+        } else {
+            PMoveCollection::new()
+        }
+    }
+
+    fn mark_moved(pmoves: PMoveCollection<Self>) -> PMoveCollection<Self> {
+        pmoves
+            .into_iter()
+            .map(|pmove| {
+                let piece = pmove.current_piece();
+                match piece.kind() {
+                    ChessPiece::UnmovedRook => {
+                        pmove.update_piece(|piece| piece.new_kind(ChessPiece::Rook))
+                    }
+                    ChessPiece::UnmovedKing => {
+                        pmove.update_piece(|piece| piece.new_kind(ChessPiece::King))
+                    }
+                    _ => pmove,
+                }
+            })
+            .collect()
+    }
 }
 
 impl fmt::Debug for Chess {
@@ -248,12 +303,14 @@ pub enum ChessPiece {
     Queen,
     King,
     Pawn,
+    UnmovedKing,
+    UnmovedRook,
 }
 
 impl Movable for ChessPiece {
     fn possible_directions(&self) -> Vec<Direction> {
         match self {
-            ChessPiece::Rook => vec![
+            ChessPiece::Rook | ChessPiece::UnmovedRook => vec![
                 Direction::new(0, 1),
                 Direction::new(0, -1),
                 Direction::new(1, 0),
@@ -275,7 +332,7 @@ impl Movable for ChessPiece {
                 Direction::new(-1, 1),
                 Direction::new(-1, -1),
             ],
-            ChessPiece::Queen | ChessPiece::King => vec![
+            ChessPiece::Queen | ChessPiece::King | ChessPiece::UnmovedKing => vec![
                 Direction::new(1, 1),
                 Direction::new(1, -1),
                 Direction::new(-1, 1),
@@ -630,5 +687,100 @@ mod tests {
         let moves = Chess::new().execute_game_rules(&board);
 
         assert_eq!(moves.len(), 20);
+    }
+
+    #[test]
+    fn castling_is_not_allowed_if_king_or_rook_have_moved() {
+        let king = Piece::new(Coords::new(1, 5), ChessPiece::King, White);
+        let board = Board::new()
+            .insert_piece(king.clone())
+            .insert_piece(Piece::new(Coords::new(1, 1), ChessPiece::Rook, White))
+            .insert_piece(Piece::new(Coords::new(1, 8), ChessPiece::Rook, White));
+        let pmove = PartialMove::initial(board, king);
+        let moves = Chess::castling(pmove);
+
+        assert_eq!(moves.len(), 0);
+    }
+
+    #[test]
+    fn castling_is_allowed_if_king_or_rook_have_not_moved() {
+        let king = Piece::new(Coords::new(1, 5), ChessPiece::UnmovedKing, White);
+        let board = Board::new()
+            .insert_piece(king.clone())
+            .insert_piece(Piece::new(
+                Coords::new(1, 1),
+                ChessPiece::UnmovedRook,
+                White,
+            ))
+            .insert_piece(Piece::new(
+                Coords::new(1, 8),
+                ChessPiece::UnmovedRook,
+                White,
+            ));
+        let pmove = PartialMove::initial(board, king);
+        let moves = Chess::castling(pmove);
+
+        assert_eq!(moves.len(), 2);
+    }
+
+    #[test]
+    fn do_the_small_white_castle() {
+        let king = Piece::new(Coords::new(1, 5), ChessPiece::UnmovedKing, White);
+        let rook = Piece::new(Coords::new(1, 8), ChessPiece::UnmovedRook, White);
+        let board = Board::new().insert_piece(king.clone()).insert_piece(rook);
+        let pmove = PartialMove::initial(board, king);
+        let moves = Chess::castling(pmove);
+
+        assert_eq!(moves.len(), 1);
+        assert_eq!(
+            moves[0]
+                .current_board()
+                .get(Coords::new(1, 7))
+                .map(Piece::kind),
+            Some(&ChessPiece::King)
+        );
+        assert_eq!(
+            moves[0]
+                .current_board()
+                .get(Coords::new(1, 6))
+                .map(Piece::kind),
+            Some(&ChessPiece::Rook)
+        );
+    }
+
+    #[test]
+    fn do_the_big_white_castle() {
+        let king = Piece::new(Coords::new(1, 5), ChessPiece::UnmovedKing, White);
+        let rook = Piece::new(Coords::new(1, 1), ChessPiece::UnmovedRook, White);
+        let board = Board::new().insert_piece(king.clone()).insert_piece(rook);
+        let pmove = PartialMove::initial(board, king);
+        let moves = Chess::castling(pmove);
+
+        assert_eq!(moves.len(), 1);
+        assert_eq!(
+            moves[0]
+                .current_board()
+                .get(Coords::new(1, 3))
+                .map(Piece::kind),
+            Some(&ChessPiece::King)
+        );
+        assert_eq!(
+            moves[0]
+                .current_board()
+                .get(Coords::new(1, 4))
+                .map(Piece::kind),
+            Some(&ChessPiece::Rook)
+        );
+    }
+
+    #[test]
+    fn unmoved_king_becomes_king_when_moving() {
+        let king = Piece::new(Coords::new(1, 1), ChessPiece::UnmovedKing, White);
+        let board = Board::new().insert_piece(king.clone());
+        let pmove = PartialMove::initial(board, king);
+        let moves = Chess::mark_moved(vec![pmove]);
+
+        assert_eq!(moves.len(), 1);
+        assert_eq!(moves[0].current_piece().kind(), &ChessPiece::King);
     }
 }

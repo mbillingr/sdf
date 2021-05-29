@@ -267,6 +267,7 @@ pub enum PartialMove<G: Game> {
     Move(Coords, Coords, Box<Self>),
     Capture(Coords, Box<Self>),
     Update(Piece<G>, Box<Self>),
+    Another(Piece<G>, Box<Self>),
     Finished(Box<Self>),
 }
 
@@ -275,12 +276,17 @@ impl<G: Game> PartialMove<G> {
         PartialMove::Initial(board, piece)
     }
 
+    pub fn move_another_piece(self, piece: Piece<G>) -> Self {
+        PartialMove::Another(piece, Box::new(self))
+    }
+
     pub fn is_empty(&self) -> bool {
         match self {
             PartialMove::Initial(_, _) => true,
             PartialMove::Move(_, _, _) | PartialMove::Capture(_, _) | PartialMove::Update(_, _) => {
                 false
             }
+            PartialMove::Another(_, parent) => parent.is_empty(),
             PartialMove::Finished(pmove) => pmove.is_empty(),
         }
     }
@@ -288,9 +294,10 @@ impl<G: Game> PartialMove<G> {
     pub fn is_finished(&self) -> bool {
         match self {
             PartialMove::Initial(_, _) => false,
-            PartialMove::Move(_, _, _) | PartialMove::Capture(_, _) | PartialMove::Update(_, _) => {
-                false
-            }
+            PartialMove::Move(_, _, _)
+            | PartialMove::Capture(_, _)
+            | PartialMove::Update(_, _)
+            | PartialMove::Another(_, _) => false,
             PartialMove::Finished(_) => true,
         }
     }
@@ -310,7 +317,9 @@ impl<G: Game> PartialMove<G> {
                 .remove_piece_at(parent.current_piece().coords())
                 .unwrap()
                 .insert_piece(piece.clone()),
-            PartialMove::Finished(pmove) => pmove.current_board(),
+            PartialMove::Another(_, parent) | PartialMove::Finished(parent) => {
+                parent.current_board()
+            }
         }
     }
 
@@ -320,6 +329,7 @@ impl<G: Game> PartialMove<G> {
             PartialMove::Move(_, _, parent)
             | PartialMove::Capture(_, parent)
             | PartialMove::Update(_, parent)
+            | PartialMove::Another(_, parent)
             | PartialMove::Finished(parent) => Some(&**parent),
         }
     }
@@ -330,6 +340,7 @@ impl<G: Game> PartialMove<G> {
             PartialMove::Move(_, coords, parent) => parent.current_piece().move_to(*coords),
             PartialMove::Capture(_, parent) => parent.current_piece(),
             PartialMove::Update(piece, _) => piece.clone(),
+            PartialMove::Another(piece, _) => piece.clone(),
             PartialMove::Finished(parent) => parent.current_piece(),
         }
     }
@@ -358,6 +369,7 @@ impl<G: Game> PartialMove<G> {
             PartialMove::Capture(_, _) => true,
             PartialMove::Move(_, _, parent)
             | PartialMove::Update(_, parent)
+            | PartialMove::Another(_, parent)
             | PartialMove::Finished(parent) => parent.does_capture_pieces(),
         }
     }
