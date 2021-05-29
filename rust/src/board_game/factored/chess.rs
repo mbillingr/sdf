@@ -45,7 +45,7 @@ impl Chess {
             ChessPiece::Rook | ChessPiece::Bishop | ChessPiece::Queen => {
                 Self::multidirectional_move(pmove)
             }
-            ChessPiece::Knight => Self::simple_move(pmove),
+            ChessPiece::Knight | ChessPiece::King => Self::simple_move(pmove),
         }
     }
 
@@ -138,6 +138,7 @@ pub enum ChessPiece {
     Knight,
     Bishop,
     Queen,
+    King,
 }
 
 impl Movable for ChessPiece {
@@ -165,7 +166,7 @@ impl Movable for ChessPiece {
                 Direction::new(-1, 1),
                 Direction::new(-1, -1),
             ],
-            ChessPiece::Queen => vec![
+            ChessPiece::Queen | ChessPiece::King => vec![
                 Direction::new(1, 1),
                 Direction::new(1, -1),
                 Direction::new(-1, 1),
@@ -366,6 +367,20 @@ mod tests {
     #[test]
     fn queen_moves_diagonally_horizontally_or_vertically() {
         let directions = ChessPiece::Queen.possible_directions();
+        assert_eq!(directions.len(), 8);
+        assert!(directions.contains(&Direction::new(1, 1)));
+        assert!(directions.contains(&Direction::new(-1, 1)));
+        assert!(directions.contains(&Direction::new(1, -1)));
+        assert!(directions.contains(&Direction::new(-1, -1)));
+        assert!(directions.contains(&Direction::new(1, 0)));
+        assert!(directions.contains(&Direction::new(-1, 0)));
+        assert!(directions.contains(&Direction::new(0, 1)));
+        assert!(directions.contains(&Direction::new(0, -1)));
+    }
+
+    #[test]
+    fn king_moves_diagonally_horizontally_or_vertically() {
+        let directions = ChessPiece::King.possible_directions();
         assert_eq!(directions.len(), 8);
         assert!(directions.contains(&Direction::new(1, 1)));
         assert!(directions.contains(&Direction::new(-1, 1)));
