@@ -1,5 +1,6 @@
 use crate::board_game::factored::board_game_domain_model::{
     AggregateRule, Direction, EvolutionRule, Game, Movable, PMoveCollection, PartialMove,
+    PositionInfo,
 };
 use std::fmt;
 use std::sync::Arc;
@@ -34,17 +35,47 @@ impl Game for Chess {
 impl Chess {
     pub fn new() -> Self {
         Chess {
-            evolution_rules: vec![Arc::new(Self::rook_move)],
+            evolution_rules: vec![Arc::new(Self::move_dispatch)],
             aggregate_rules: vec![],
         }
     }
 
-    fn rook_move(pmove: PartialMove<Self>) -> PMoveCollection<Self> {
-        assert_eq!(pmove.current_piece().kind(), &ChessPiece::Rook);
-        Chess::multidirectional_move(pmove)
+    fn move_dispatch(pmove: PartialMove<Self>) -> PMoveCollection<Self> {
+        match pmove.current_piece().kind() {
+            ChessPiece::Rook => Self::multidirectional_move(pmove),
+            ChessPiece::Knight => Self::simple_move(pmove),
+        }
     }
 
-    fn multidirectional_move(pmove: PartialMove<Chess>) -> Vec<PartialMove<Chess>> {
+    fn simple_move(pmove: PartialMove<Chess>) -> PMoveCollection<Self> {
+        pmove
+            .current_piece()
+            .possible_directions()
+            .into_iter()
+            .filter_map(|direction| {
+                let landing = pmove.compute_new_position(direction, 1);
+                let board = pmove.current_board();
+
+                if !board.is_position_on_board(landing) {
+                    return None;
+                }
+
+                let mut new_move = pmove.clone().new_piece_position(landing);
+
+                match board.position_info(landing) {
+                    PositionInfo::OccupiedBySelf => return None,
+                    PositionInfo::Unoccupied => {}
+                    PositionInfo::OccupiedByOpponent => {
+                        new_move = new_move.capture_piece_at(landing)
+                    }
+                }
+
+                Some(new_move.finish_move())
+            })
+            .collect()
+    }
+
+    fn multidirectional_move(pmove: PartialMove<Chess>) -> PMoveCollection<Self> {
         pmove
             .current_piece()
             .possible_directions()
@@ -102,6 +133,7 @@ pub enum Color {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum ChessPiece {
     Rook,
+    Knight,
 }
 
 impl Movable for ChessPiece {
@@ -112,6 +144,16 @@ impl Movable for ChessPiece {
                 Direction::new(0, -1),
                 Direction::new(1, 0),
                 Direction::new(-1, 0),
+            ],
+            ChessPiece::Knight => vec![
+                Direction::new(2, 1),
+                Direction::new(2, -1),
+                Direction::new(1, 2),
+                Direction::new(-1, 2),
+                Direction::new(-2, 1),
+                Direction::new(-2, -1),
+                Direction::new(1, -2),
+                Direction::new(-1, -2),
             ],
         }
     }
@@ -191,6 +233,83 @@ mod tests {
     }
 
     #[test]
+    fn simple_move_visits_all_piece_directions() {
+        let piece = Piece::new(Coords::new(5, 5), ChessPiece::Rook, White);
+        let pmove = PartialMove::initial(Board::new(), piece);
+
+        let moves = Chess::simple_move(pmove);
+
+        assert_eq!(moves.len(), 4);
+        let moved_coords: Vec<_> = moves
+            .iter()
+            .map(|pmove| pmove.current_piece().coords())
+            .collect();
+        assert!(moved_coords.contains(&Coords::new(5, 6)));
+        assert!(moved_coords.contains(&Coords::new(5, 4)));
+        assert!(moved_coords.contains(&Coords::new(4, 5)));
+        assert!(moved_coords.contains(&Coords::new(6, 5)));
+    }
+
+    #[test]
+    fn simple_move_does_not_leave_the_board() {
+        let piece = Piece::new(Coords::new(1, 1), ChessPiece::Rook, White);
+        let pmove = PartialMove::initial(Board::new(), piece);
+
+        let moves = Chess::simple_move(pmove);
+
+        assert_eq!(moves.len(), 2);
+        let moved_coords: Vec<_> = moves
+            .iter()
+            .map(|pmove| pmove.current_piece().coords())
+            .collect();
+        assert!(!moved_coords.contains(&Coords::new(1, 0)));
+        assert!(!moved_coords.contains(&Coords::new(0, 1)));
+    }
+
+    #[test]
+    fn simple_move_does_not_move_over_owned_pieces() {
+        let piece = Piece::new(Coords::new(1, 1), ChessPiece::Rook, White);
+        let board = Board::new()
+            .insert_piece(piece.clone())
+            .insert_piece(Piece::new(Coords::new(1, 2), ChessPiece::Rook, White))
+            .insert_piece(Piece::new(Coords::new(2, 1), ChessPiece::Rook, White));
+        let pmove = PartialMove::initial(board, piece);
+
+        let moves = Chess::simple_move(pmove);
+
+        assert_eq!(moves.len(), 0);
+    }
+
+    #[test]
+    fn simple_move_captures_opponent_pieces() {
+        let piece = Piece::new(Coords::new(1, 1), ChessPiece::Rook, White);
+        let board = Board::new()
+            .insert_piece(piece.clone())
+            .insert_piece(Piece::new(Coords::new(2, 1), ChessPiece::Rook, White))
+            .insert_piece(Piece::new(Coords::new(1, 2), ChessPiece::Rook, Black));
+        let pmove = PartialMove::initial(board, piece);
+
+        let moves = Chess::simple_move(pmove);
+
+        assert_eq!(moves.len(), 1);
+        assert!(moves[0].does_capture_pieces());
+        assert_eq!(moves[0].current_piece().coords(), Coords::new(1, 2));
+    }
+
+    #[test]
+    fn pieces_make_only_appropriate_moves() {
+        let rook = Piece::new(Coords::new(2, 3), ChessPiece::Rook, White);
+        let knight = Piece::new(Coords::new(1, 1), ChessPiece::Knight, White);
+        let board = Board::new()
+            .insert_piece(rook.clone())
+            .insert_piece(knight.clone());
+
+        let moves = Chess::new().execute_game_rules(&board);
+
+        assert_eq!(moves.len(), 14 + 1) // all moves valid for the rook, one for the knight
+    }
+
+    #[test]
     fn rook_moves_horizontally_or_vertically() {
         let directions = ChessPiece::Rook.possible_directions();
         assert_eq!(directions.len(), 4);
@@ -198,5 +317,19 @@ mod tests {
         assert!(directions.contains(&Direction::new(-1, 0)));
         assert!(directions.contains(&Direction::new(0, 1)));
         assert!(directions.contains(&Direction::new(0, -1)));
+    }
+
+    #[test]
+    fn knight_jumps_in_8_possible_directions() {
+        let directions = ChessPiece::Knight.possible_directions();
+        assert_eq!(directions.len(), 8);
+        assert!(directions.contains(&Direction::new(2, 1)));
+        assert!(directions.contains(&Direction::new(2, -1)));
+        assert!(directions.contains(&Direction::new(-2, 1)));
+        assert!(directions.contains(&Direction::new(-2, -1)));
+        assert!(directions.contains(&Direction::new(1, 2)));
+        assert!(directions.contains(&Direction::new(-1, 2)));
+        assert!(directions.contains(&Direction::new(1, -2)));
+        assert!(directions.contains(&Direction::new(-1, -2)));
     }
 }
