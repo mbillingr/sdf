@@ -41,6 +41,10 @@ impl Chess {
 
     fn rook_move(pmove: PartialMove<Self>) -> PMoveCollection<Self> {
         assert_eq!(pmove.current_piece().kind(), &ChessPiece::Rook);
+        Chess::multidirectional_move(pmove)
+    }
+
+    fn multidirectional_move(pmove: PartialMove<Chess>) -> Vec<PartialMove<Chess>> {
         pmove
             .current_piece()
             .possible_directions()
@@ -120,35 +124,6 @@ mod tests {
     use Color::*;
 
     #[test]
-    fn rook_moves_horizontally_or_vertically() {
-        let directions = ChessPiece::Rook.possible_directions();
-        assert_eq!(directions.len(), 4);
-        assert!(directions.contains(&Direction::new(1, 0)));
-        assert!(directions.contains(&Direction::new(-1, 0)));
-        assert!(directions.contains(&Direction::new(0, 1)));
-        assert!(directions.contains(&Direction::new(0, -1)));
-    }
-
-    #[test]
-    fn rook_moves_over_the_entire_board() {
-        let piece = Piece::new(Coords::new(4, 4), ChessPiece::Rook, White);
-        let board = Board::new().insert_piece(piece.clone());
-        let pmove = PartialMove::initial(board, piece);
-
-        let moves = Chess::rook_move(pmove);
-
-        assert_eq!(moves.len(), 14);
-        let moved_coords: Vec<_> = moves
-            .iter()
-            .map(|pmove| pmove.current_piece().coords())
-            .collect();
-        assert!(moved_coords.contains(&Coords::new(1, 4)));
-        assert!(moved_coords.contains(&Coords::new(8, 4)));
-        assert!(moved_coords.contains(&Coords::new(4, 1)));
-        assert!(moved_coords.contains(&Coords::new(4, 8)));
-    }
-
-    #[test]
     fn directional_move_does_not_leave_the_board() {
         let piece = Piece::new(Coords::new(1, 1), ChessPiece::Rook, White);
         let pmove = PartialMove::initial(Board::new(), piece);
@@ -194,5 +169,34 @@ mod tests {
         assert_eq!(moves.len(), 1);
         assert!(moves[0].does_capture_pieces());
         assert_eq!(moves[0].current_piece().coords(), Coords::new(1, 2));
+    }
+
+    #[test]
+    fn multidirectional_move_visits_all_directions_of_piece() {
+        let piece = Piece::new(Coords::new(4, 4), ChessPiece::Rook, White);
+        let board = Board::new().insert_piece(piece.clone());
+        let pmove = PartialMove::initial(board, piece);
+
+        let moves = Chess::multidirectional_move(pmove);
+
+        assert_eq!(moves.len(), 14);
+        let moved_coords: Vec<_> = moves
+            .iter()
+            .map(|pmove| pmove.current_piece().coords())
+            .collect();
+        assert!(moved_coords.contains(&Coords::new(1, 4)));
+        assert!(moved_coords.contains(&Coords::new(8, 4)));
+        assert!(moved_coords.contains(&Coords::new(4, 1)));
+        assert!(moved_coords.contains(&Coords::new(4, 8)));
+    }
+
+    #[test]
+    fn rook_moves_horizontally_or_vertically() {
+        let directions = ChessPiece::Rook.possible_directions();
+        assert_eq!(directions.len(), 4);
+        assert!(directions.contains(&Direction::new(1, 0)));
+        assert!(directions.contains(&Direction::new(-1, 0)));
+        assert!(directions.contains(&Direction::new(0, 1)));
+        assert!(directions.contains(&Direction::new(0, -1)));
     }
 }
