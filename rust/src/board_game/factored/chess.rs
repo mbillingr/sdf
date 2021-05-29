@@ -607,4 +607,28 @@ mod tests {
 
         assert_eq!(moves.len(), 0);
     }
+
+    #[test]
+    fn number_of_possible_opening_moves() {
+        let board = Board::new()
+            .insert_piece(Piece::new(Coords::new(2, 1), ChessPiece::Pawn, White))
+            .insert_piece(Piece::new(Coords::new(2, 2), ChessPiece::Pawn, White))
+            .insert_piece(Piece::new(Coords::new(2, 3), ChessPiece::Pawn, White))
+            .insert_piece(Piece::new(Coords::new(2, 4), ChessPiece::Pawn, White))
+            .insert_piece(Piece::new(Coords::new(2, 5), ChessPiece::Pawn, White))
+            .insert_piece(Piece::new(Coords::new(2, 6), ChessPiece::Pawn, White))
+            .insert_piece(Piece::new(Coords::new(2, 7), ChessPiece::Pawn, White))
+            .insert_piece(Piece::new(Coords::new(2, 8), ChessPiece::Pawn, White))
+            .insert_piece(Piece::new(Coords::new(1, 1), ChessPiece::Rook, White))
+            .insert_piece(Piece::new(Coords::new(1, 2), ChessPiece::Knight, White))
+            .insert_piece(Piece::new(Coords::new(1, 3), ChessPiece::Bishop, White))
+            .insert_piece(Piece::new(Coords::new(1, 4), ChessPiece::Queen, White))
+            .insert_piece(Piece::new(Coords::new(1, 5), ChessPiece::King, White))
+            .insert_piece(Piece::new(Coords::new(1, 6), ChessPiece::Bishop, White))
+            .insert_piece(Piece::new(Coords::new(1, 7), ChessPiece::Knight, White))
+            .insert_piece(Piece::new(Coords::new(1, 8), ChessPiece::Rook, White));
+        let moves = Chess::new().execute_game_rules(&board);
+
+        assert_eq!(moves.len(), 20);
+    }
 }
