@@ -3,7 +3,7 @@ software.
 
 Building the container
 ```
-> docker build sdf .
+> docker build -t sdf .
 ```
 
 Running the container
