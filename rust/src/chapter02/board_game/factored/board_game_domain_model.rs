@@ -424,7 +424,7 @@ impl std::ops::Mul<i16> for Direction {
 
 #[cfg(test)]
 mod tests {
-    use crate::board_game::factored::board_game_domain_model::{
+    use crate::chapter02::board_game::factored::board_game_domain_model::{
         AggregateRule, Board, Coords, Direction, EvolutionRule, Movable, PMoveCollection, Piece,
     };
 

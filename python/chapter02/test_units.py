@@ -3,9 +3,9 @@ from unittest.mock import Mock
 
 import pytest
 
-import units
-from combinators import compose
-from units import ConversionRegistry
+from chapter02 import units
+from chapter02.combinators import compose
+from chapter02.units import ConversionRegistry
 
 
 def test_make_conversion_returns_conversion_procedure():

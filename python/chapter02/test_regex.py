@@ -1,5 +1,5 @@
 import re
-import regex as r
+from chapter02 import regex as r
 
 
 # integration tests

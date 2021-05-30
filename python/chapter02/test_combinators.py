@@ -2,10 +2,10 @@ from unittest.mock import Mock, call
 
 import pytest
 
-from combinators import (compose, curry_arguments, discard_arguments, iterate,
+from chapter02.combinators import (compose, curry_arguments, discard_arguments, iterate,
                          parallel_combine, permute_arguments, spread_combine,
                          restrict_arity, get_arity, Arity)
-from values import Values
+from chapter02.values import Values
 
 
 def test_compose():

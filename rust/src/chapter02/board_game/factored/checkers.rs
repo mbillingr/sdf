@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::board_game::factored::board_game_domain_model::{
+use crate::chapter02::board_game::factored::board_game_domain_model::{
     AggregateRule, Direction, EvolutionRule, Game, Movable, PMoveCollection, PartialMove, Piece,
 };
 
@@ -166,9 +166,11 @@ impl Movable for CheckersPiece {
 
 #[cfg(test)]
 mod tests {
-    use crate::board_game::factored::board_game_domain_model::{Board, Coords, Game, Piece};
-    use crate::board_game::factored::checkers::Color::*;
-    use crate::board_game::factored::checkers::{Checkers, CheckersPiece};
+    use crate::chapter02::board_game::factored::board_game_domain_model::{
+        Board, Coords, Game, Piece,
+    };
+    use crate::chapter02::board_game::factored::checkers::Color::*;
+    use crate::chapter02::board_game::factored::checkers::{Checkers, CheckersPiece};
 
     #[test]
     fn empty_board_produces_no_moves() {

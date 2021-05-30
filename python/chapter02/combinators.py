@@ -1,6 +1,6 @@
 import inspect
 
-from values import apply, Values
+from chapter02.values import apply, Values
 
 
 def compose(*funcs):

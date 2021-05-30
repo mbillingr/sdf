@@ -1,6 +1,6 @@
 from unittest.mock import Mock
 
-from values import Values, apply
+from chapter02.values import Values, apply
 
 
 def test_normal_return_value_passed_on_as_single_argument():

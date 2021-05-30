@@ -31,7 +31,7 @@ pub fn identity<T>(x: T) -> T {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::square;
+    use crate::chapter02::utils::square;
 
     #[test]
     fn compose_acceptance_test() {

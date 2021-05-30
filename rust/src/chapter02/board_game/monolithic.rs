@@ -311,7 +311,7 @@ mod domain_model {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::list::{ListView, SharedList};
+    use crate::chapter02::list::{ListView, SharedList};
     use Color::*;
 
     const CHECKERS_BOARD_SIZE: i16 = 8;

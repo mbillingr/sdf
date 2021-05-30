@@ -1,16 +1,16 @@
 #[macro_export]
 macro_rules! regex {
-    (.) => {$crate::regex::Regex::Any};
-    (^) => {$crate::regex::Regex::BoL};
-    ($) => {$crate::regex::Regex::EoL};
-    ((seq $($x:tt)*)) => {$crate::regex::Regex::seq(vec![$(regex!($x)),*])};
-    ((alt $($x:tt)*)) => {$crate::regex::Regex::alt(vec![$(regex!($x)),*])};
-    ((repeat $n:tt $x:tt)) => {$crate::regex::Regex::Repeat($n, Some($n), Box::new(regex!($x)))};
-    ((repeat $min:tt .. $max:tt $x:tt)) => {$crate::regex::Regex::Repeat($min, Some($max), Box::new(regex!($x)))};
-    ((repeat $min:tt .. $x:tt)) => {$crate::regex::Regex::Repeat($min, None, Box::new(regex!($x)))};
-    ((from $chars:expr)) => {$crate::regex::Regex::char_from($chars)};
-    ((not-from $chars:expr)) => {$crate::regex::Regex::complement($chars)};
-    ($quote:expr) => {crate::regex::Regex::from($quote)}
+    (.) => {$crate::chapter02::regex::Regex::Any};
+    (^) => {$crate::chapter02::regex::Regex::BoL};
+    ($) => {$crate::chapter02::regex::Regex::EoL};
+    ((seq $($x:tt)*)) => {$crate::chapter02::regex::Regex::seq(vec![$(regex!($x)),*])};
+    ((alt $($x:tt)*)) => {$crate::chapter02::regex::Regex::alt(vec![$(regex!($x)),*])};
+    ((repeat $n:tt $x:tt)) => {$crate::chapter02::regex::Regex::Repeat($n, Some($n), Box::new(regex!($x)))};
+    ((repeat $min:tt .. $max:tt $x:tt)) => {$crate::chapter02::regex::Regex::Repeat($min, Some($max), Box::new(regex!($x)))};
+    ((repeat $min:tt .. $x:tt)) => {$crate::chapter02::regex::Regex::Repeat($min, None, Box::new(regex!($x)))};
+    ((from $chars:expr)) => {$crate::chapter02::regex::Regex::char_from($chars)};
+    ((not-from $chars:expr)) => {$crate::chapter02::regex::Regex::complement($chars)};
+    ($quote:expr) => {$crate::chapter02::regex::Regex::from($quote)}
 }
 
 #[derive(Debug, Clone, PartialEq)]

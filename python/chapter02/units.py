@@ -1,7 +1,7 @@
 from collections import deque
 from typing import Callable, Optional
 
-from combinators import compose, identity
+from chapter02.combinators import compose, identity
 
 
 class ConversionRegistry:

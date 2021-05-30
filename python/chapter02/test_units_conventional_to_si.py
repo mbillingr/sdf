@@ -1,7 +1,7 @@
 import math
 
-import units
-import units_conventional_to_si as csi
+from chapter02 import units
+from chapter02 import units_conventional_to_si as csi
 
 
 def test_fahrenheit_to_celsius():
