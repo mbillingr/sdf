@@ -6,9 +6,9 @@ Building the container
 > docker build -t sdf .
 ```
 
-Running the container
+Running the container (from the project root directory)
 ```
-docker run -it --rm sdf
+docker run -it --rm -v `pwd`:/mystuff sdf
 ```
 
 Enter the managed environment by running the following
