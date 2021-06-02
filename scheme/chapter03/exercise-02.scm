@@ -26,22 +26,21 @@ Use the defined arithmetics by passing them to (install-arithmetic!).
              vecs)
         (error "Vector dimension mismatch:" vecs))))
 
-(define vector-arithmetic
-  (make-arithmetic 'vector vector? '()
-    (lambda (name)
-      (case name
-        ((additive-identity) #f)
-        ((multiplicative-identity) #t)
-        (else (default-object))))
-    (lambda (operator)
-      (let ((procedure
-              (case operator
-                ((+) (vector-element-wise +))
-                ((-) (vector-element-wise -))
-                ((negate) (vector-element-wise -))
-                (else
-                  (lambda args
-                    (error "Operator undefined in Vector" operator))))))
-        (simple-operation operator vector? procedure)))))
+(define (vector-extender base-arithmetic)
+  (make-arithmetic 'vector vector? (list base-arithmetic)
+    (lambda (name base-constant)
+      base-constant)
+    (let ((base-predicate
+            (arithmetic-domain-predicate base-arithmetic)))
+      (lambda (operator base-operation)
+        (simple-operation operator
+                          vector?
+                          (case operator
+                            ((+) (vector-element-wise +))
+                            ((-) (vector-element-wise -))
+                            ((negate) (vector-element-wise -))
+                            (else
+                              (lambda args
+                                (error "Operator undefined in Vector" operator)))))))))
 
-(install-arithmetic! (add-arithmetics combined-arithmetic vector-arithmetic))
+(install-arithmetic! (extend-arithmetic vector-extender combined-arithmetic))
