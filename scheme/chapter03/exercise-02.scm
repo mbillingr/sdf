@@ -36,9 +36,18 @@ Use the defined arithmetics by passing them to (install-arithmetic!).
         (simple-operation operator
                           vector?
                           (case operator
+                            ; alternative: implement vector operations in terms of the base operation
+                            ;              this has the drawback that it does not work on vectors of vectors.
+                            ;((+) (vector-element-wise (lambda args (apply-operation base-operation args))))
                             ((+) (vector-element-wise +))
                             ((-) (vector-element-wise -))
                             ((negate) (vector-element-wise -))
+                            ((*) (lambda (v1 v2)
+                                   (reduce
+                                     +
+                                     (arithmetic-constant 'additive-identity
+                                                          base-arithmetic)
+                                     (vector->list ((vector-element-wise *) v1 v2)))))
                             (else
                               (lambda args
                                 (error "Operator undefined in Vector" operator)))))))))
