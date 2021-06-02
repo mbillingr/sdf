@@ -48,6 +48,7 @@ Use the defined arithmetics by passing them to (install-arithmetic!).
                                      (arithmetic-constant 'additive-identity
                                                           base-arithmetic)
                                      (vector->list ((vector-element-wise *) v1 v2)))))
+                            ((magnitude) (lambda (v) (sqrt (* v v))))
                             (else
                               (lambda args
                                 (error "Operator undefined in Vector" operator)))))))))
