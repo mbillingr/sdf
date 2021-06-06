@@ -1,4 +1,5 @@
 import itertools
+from trie import Trie
 
 
 def generic_procedure_constructor(dispatch_store_maker):
@@ -57,6 +58,20 @@ class SimpleDispatchStore:
         self.default_handler = handler
 
 
+class TrieDispatchStore(SimpleDispatchStore):
+    def __init__(self):
+        super().__init__()
+        self.trie = Trie()
+
+    def get_handler(self, args):
+        return self.trie.get_a_value(args)
+
+    def add_handler(self, applicability, handler):
+        super().add_handler(applicability, handler)
+        for path in applicability:
+            self.trie.set_path_value(path, handler)
+
+
 class Metadata:
     def __init__(self, name, arity, dispatch_store, default_handler):
         dispatch_store.set_default_handler(default_handler)
@@ -98,9 +113,9 @@ def is_symbolic(obj):
     return isinstance(obj, str)
 
 
-simple_generic_procedure = generic_procedure_constructor(SimpleDispatchStore)
+generic_procedure = generic_procedure_constructor(TrieDispatchStore)
 
-plus = simple_generic_procedure("plus", 2, None)
+plus = generic_procedure("plus", 2, None)
 
 define_generic_procedure_handler(plus, all_args(2, is_number), lambda a, b: a + b)
 define_generic_procedure_handler(plus, any_arg(2, is_symbolic, is_number), lambda a, b: f"({a} + {b})")
