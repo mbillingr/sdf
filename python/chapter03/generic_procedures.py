@@ -106,21 +106,49 @@ def any_arg(arity, predicate, base_predicate):
 
 
 def is_number(obj):
+    PREDICATE_COUNTS[is_number] += 1
     return isinstance(obj, int) or isinstance(obj, float)
 
 
 def is_symbolic(obj):
+    PREDICATE_COUNTS[is_symbolic] += 1
     return isinstance(obj, str)
 
+
+PREDICATE_COUNTS = None
+
+
+def reset_predicate_counts():
+    global PREDICATE_COUNTS
+    PREDICATE_COUNTS = {is_number: 0, is_symbolic: 0}
+
+
+reset_predicate_counts()
 
 generic_procedure = generic_procedure_constructor(TrieDispatchStore)
 
 plus = generic_procedure("plus", 2, None)
-
 define_generic_procedure_handler(plus, all_args(2, is_number), lambda a, b: a + b)
 define_generic_procedure_handler(plus, any_arg(2, is_symbolic, is_number), lambda a, b: f"({a} + {b})")
+
+minus = generic_procedure("minus", 2, None)
+define_generic_procedure_handler(minus, all_args(2, is_number), lambda a, b: a - b)
+define_generic_procedure_handler(minus, any_arg(2, is_symbolic, is_number), lambda a, b: f"({a} - {b})")
 
 print(plus(1, 2))
 print(plus(1, "b"))
 print(plus("a", 2))
 print(plus("a", "b"))
+
+reset_predicate_counts()
+
+
+def fib(n):
+    if n <= 2:
+        return n
+    else:
+        return plus(fib(minus(n, 1)), fib(minus(n, 2)))
+
+
+print(fib(20))
+print(PREDICATE_COUNTS)
