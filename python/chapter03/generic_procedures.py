@@ -72,6 +72,24 @@ class TrieDispatchStore(SimpleDispatchStore):
             self.trie.set_path_value(path, handler)
 
 
+def cache_wrap_dispatch_store(DispatchStore):
+    class WrappedDispatchStore(DispatchStore):
+        def __init__(self):
+            super().__init__()
+            self.cache = {}
+
+        def get_handler(self, args):
+            types = tuple([type(a) for a in args])
+            if types in self.cache:
+                return self.cache[types]
+            else:
+                h = super().get_handler(args)
+                self.cache[types] = h
+                return h
+
+    return WrappedDispatchStore
+
+
 class Metadata:
     def __init__(self, name, arity, dispatch_store, default_handler):
         dispatch_store.set_default_handler(default_handler)
@@ -125,7 +143,7 @@ def reset_predicate_counts():
 
 reset_predicate_counts()
 
-generic_procedure = generic_procedure_constructor(TrieDispatchStore)
+generic_procedure = generic_procedure_constructor(cache_wrap_dispatch_store(TrieDispatchStore))
 
 plus = generic_procedure("plus", 2, None)
 define_generic_procedure_handler(plus, all_args(2, is_number), lambda a, b: a + b)
