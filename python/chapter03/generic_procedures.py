@@ -32,56 +32,39 @@ def get_generic_procedure_handler(metadata, args):
 
 
 def define_generic_procedure_handler(generic_procedure, applicability, handler):
-    generic_procedure_metadata(generic_procedure).dispatch_store("add_handler")(applicability, handler)
+    generic_procedure_metadata(generic_procedure).dispatch_store.add_handler(applicability, handler)
 
 
-# todo: this could be a class
-def make_simple_dispatch_store():
-    rules = {}
-    default_handler = None
+class SimpleDispatchStore:
+    def __init__(self):
+        self.rules = {}
+        self.default_handler = None
 
-    def get_handler(args):
-        for predicates, handler in rules.items():
+    def get_handler(self, args):
+        for predicates, handler in self.rules.items():
             if predicates_match(predicates, args):
                 return handler
         return None
 
-    def add_handler(applicability, handler):
+    def add_handler(self, applicability, handler):
         for predicates in applicability:
-            rules[predicates] = handler
+            self.rules[predicates] = handler
 
-    def get_default_handler():
-        return default_handler
+    def get_default_handler(self):
+        return self.default_handler
 
-    def set_default_handler(handler):
-        nonlocal default_handler
-        default_handler = handler
-
-    def dispatcher(message):
-        if message == "get_handler":
-            return get_handler
-        elif message == "add_handler":
-            return add_handler
-        elif message == "get_default_handler":
-            return get_default_handler
-        elif message == "set_default_handler":
-            return set_default_handler
-        elif message == "get_rules":
-            return lambda: rules
-        else:
-            raise NameError(f"Unknown message: {message}")
-
-    return dispatcher
+    def set_default_handler(self, handler):
+        self.default_handler = handler
 
 
 class Metadata:
     def __init__(self, name, arity, dispatch_store, default_handler):
-        dispatch_store("set_default_handler")(default_handler)
+        dispatch_store.set_default_handler(default_handler)
         self.name = name
         self.arity = arity
         self.dispatch_store = dispatch_store
-        self.getter = dispatch_store("get_handler")
-        self.default_getter = dispatch_store("get_default_handler")()
+        self.getter = dispatch_store.get_handler
+        self.default_getter = dispatch_store.get_default_handler
 
 
 GENERIC_PROCEDURE_METADATA = {}
@@ -115,7 +98,7 @@ def is_symbolic(obj):
     return isinstance(obj, str)
 
 
-simple_generic_procedure = generic_procedure_constructor(make_simple_dispatch_store)
+simple_generic_procedure = generic_procedure_constructor(SimpleDispatchStore)
 
 plus = simple_generic_procedure("plus", 2, None)
 
