@@ -8,16 +8,25 @@ macro_rules! obj {
 mod dispatch_store;
 mod metadata;
 mod object;
-mod predicate;
+pub mod predicate;
 
 use crate::chapter03::generic_procedures::metadata::{
     get_generic_metadata, ConcreteMetadata, Metadata,
 };
 use crate::chapter03::generic_procedures::predicate::Predicate;
 use dispatch_store::DispatchStore;
+pub use dispatch_store::SimpleDispatchStore;
 use object::Object;
 use predicate::PredicateFn;
 use std::sync::{Arc, RwLock};
+
+type GenericFn = Arc<dyn 'static + Sync + Send + Fn(GenericArgs<'_, '_>) -> GenericResult>;
+type GenericResult = Result<Arc<dyn Object>, Error>;
+type GenericArgs<'a, 'o> = &'a [&'o dyn Object];
+
+type Handler = GenericFn;
+type Applicability = Vec<Vec<Predicate>>;
+type Error = Arc<dyn ToString>;
 
 pub fn make_generic_procedure_constructor<T: DispatchStore>(
     dispatch_store_maker: impl 'static + Fn() -> T,
@@ -113,11 +122,3 @@ mod tests {
         );
     }
 }
-
-pub type GenericFn = Arc<dyn 'static + Sync + Send + Fn(GenericArgs<'_, '_>) -> GenericResult>;
-pub type GenericResult = Result<Arc<dyn Object>, Error>;
-pub type GenericArgs<'a, 'o> = &'a [&'o dyn Object];
-
-pub type Handler = GenericFn;
-pub type Applicability = Vec<Vec<Predicate>>;
-pub type Error = Arc<dyn ToString>;
