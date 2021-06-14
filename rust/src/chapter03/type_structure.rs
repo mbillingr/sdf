@@ -1,8 +1,45 @@
-use std::any::TypeId;
+use std::any::{Any, TypeId};
 
-pub trait Type: 'static {
+pub trait Type: 'static + std::fmt::Debug {
     fn type_id(&self) -> TypeId;
+    fn as_any(&self) -> &dyn Any;
     fn parent(&self) -> Option<&dyn Type>;
+}
+
+// some impls to make Type work with generic procedures
+impl Type for () {
+    fn type_id(&self) -> TypeId {
+        TypeId::of::<Self>()
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn parent(&self) -> Option<&dyn Type> {
+        None
+    }
+}
+impl Type for i64 {
+    fn type_id(&self) -> TypeId {
+        TypeId::of::<Self>()
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn parent(&self) -> Option<&dyn Type> {
+        None
+    }
+}
+
+impl Type for String {
+    fn type_id(&self) -> TypeId {
+        TypeId::of::<Self>()
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn parent(&self) -> Option<&dyn Type> {
+        None
+    }
 }
 
 pub trait TypeHierarchy {
@@ -39,56 +76,6 @@ impl TypeHierarchy for dyn Type {
             None
         }
     }
-}
-
-#[macro_export]
-macro_rules! declare_type {
-    ($type_name:ident) => {
-        struct $type_name;
-
-        impl Type for $type_name {
-            fn type_id(&self) -> TypeId {
-                TypeId::of::<Self>()
-            }
-
-            fn parent(&self) -> Option<&dyn Type> {
-                None
-            }
-        }
-    };
-
-    ($type_name:ident { $($field_name:ident: $field_type:ty),* $(,)? }) => {
-        struct $type_name {
-            $($field_name: $field_type),*
-        }
-
-        impl Type for $type_name {
-            fn type_id(&self) -> TypeId {
-                TypeId::of::<Self>()
-            }
-
-            fn parent(&self) -> Option<&dyn Type> {
-                None
-            }
-        }
-    };
-
-    ($type_name:ident($supertype:ty) { $($field_name:ident: $field_type:ty),* $(,)? }) => {
-        struct $type_name {
-            parent: $supertype,
-            $($field_name: $field_type),*
-        }
-
-        impl Type for $type_name {
-            fn type_id(&self) -> TypeId {
-                TypeId::of::<Self>()
-            }
-
-            fn parent(&self) -> Option<&dyn Type> {
-                Some(&self.parent)
-            }
-        }
-    };
 }
 
 #[macro_export]
@@ -145,11 +132,13 @@ macro_rules! recurse_type_hierarchy {
 #[macro_export]
 macro_rules! make_type {
     ($typename:ident, []) => {
-        struct $typename;
+        #[derive(Debug, Clone)]
+        pub struct $typename;
     };
 
     ($typename:ident, [$($field_name:ident: $field_type:ty,)*]) => {
-        struct $typename {
+        #[derive(Debug, Clone)]
+        pub struct $typename {
             $($field_name: $field_type,)*
         }
     };
@@ -164,24 +153,32 @@ macro_rules! make_type {
 #[macro_export]
 macro_rules! impl_type {
     ($typename:ty) => {
-        impl Type for $typename {
-            fn type_id(&self) -> TypeId {
-                TypeId::of::<Self>()
+        impl $crate::chapter03::type_structure::Type for $typename {
+            fn type_id(&self) -> ::std::any::TypeId {
+                ::std::any::TypeId::of::<Self>()
             }
 
-            fn parent(&self) -> Option<&dyn Type> {
+            fn as_any(&self) -> &dyn ::std::any::Any {
+                self
+            }
+
+            fn parent(&self) -> Option<&dyn $crate::chapter03::type_structure::Type> {
                 None
             }
         }
     };
 
     ($supertype:ty > $typename:ty) => {
-        impl Type for $typename {
-            fn type_id(&self) -> TypeId {
-                TypeId::of::<Self>()
+        impl $crate::chapter03::type_structure::Type for $typename {
+            fn type_id(&self) -> ::std::any::TypeId {
+                ::std::any::TypeId::of::<Self>()
             }
 
-            fn parent(&self) -> Option<&dyn Type> {
+            fn as_any(&self) -> &dyn ::std::any::Any {
+                self
+            }
+
+            fn parent(&self) -> Option<&dyn $crate::chapter03::type_structure::Type> {
                 Some(&self.parent)
             }
         }

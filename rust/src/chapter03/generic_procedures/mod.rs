@@ -7,22 +7,21 @@ macro_rules! obj {
 
 mod dispatch_store;
 mod metadata;
-mod object;
 pub mod predicate;
 
 use crate::chapter03::generic_procedures::metadata::{
     get_generic_metadata, ConcreteMetadata, Metadata,
 };
 use crate::chapter03::generic_procedures::predicate::Predicate;
+use crate::chapter03::type_structure::Type;
 use dispatch_store::DispatchStore;
 pub use dispatch_store::SimpleDispatchStore;
-use object::Object;
 use predicate::PredicateFn;
 use std::sync::{Arc, RwLock};
 
 type GenericFn = Arc<dyn 'static + Sync + Send + Fn(GenericArgs<'_, '_>) -> GenericResult>;
-type GenericResult = Result<Arc<dyn Object>, Error>;
-type GenericArgs<'a, 'o> = &'a [&'o dyn Object];
+type GenericResult = Result<Arc<dyn Type>, Error>;
+type GenericArgs<'a, 'o> = &'a [&'o dyn Type];
 
 type Handler = GenericFn;
 type Applicability = Vec<Vec<Predicate>>;
@@ -64,17 +63,21 @@ pub fn all_args(arity: usize, predicate: PredicateFn) -> Applicability {
     vec![vec![predicate.into(); arity]]
 }
 
+pub fn match_args(predicates: &[PredicateFn]) -> Applicability {
+    vec![predicates.iter().map(|&pred| pred.into()).collect()]
+}
+
 #[cfg(test)]
 mod tests {
     use crate::chapter03::generic_procedures::dispatch_store::SimpleDispatchStore;
 
     use super::*;
 
-    fn is_i64(obj: &dyn Object) -> bool {
+    fn is_i64(obj: &dyn Type) -> bool {
         obj.as_any().downcast_ref::<i64>().is_some()
     }
 
-    fn is_string(obj: &dyn Object) -> bool {
+    fn is_string(obj: &dyn Type) -> bool {
         obj.as_any().downcast_ref::<String>().is_some()
     }
 

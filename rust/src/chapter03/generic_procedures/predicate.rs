@@ -1,10 +1,10 @@
-use crate::chapter03::generic_procedures::object::Object;
+use crate::chapter03::type_structure::Type;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::RwLock;
 
-pub type PredicateFn = fn(&dyn Object) -> bool;
+pub type PredicateFn = fn(&dyn Type) -> bool;
 
 #[derive(Copy, Clone)]
 pub struct Predicate(PredicateFn);
@@ -30,7 +30,7 @@ impl Hash for Predicate {
 }
 
 impl Predicate {
-    pub fn check(&self, obj: &dyn Object) -> bool {
+    pub fn check(&self, obj: &dyn Type) -> bool {
         if (self.0)(obj) {
             return true;
         }
@@ -74,8 +74,9 @@ lazy_static! {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::any::{Any, TypeId};
 
-    fn is_integer(obj: &dyn Object) -> bool {
+    fn is_integer(obj: &dyn Type) -> bool {
         let obj = obj.as_any();
         obj.downcast_ref::<i64>().is_some()
             || obj.downcast_ref::<u64>().is_some()
@@ -87,7 +88,7 @@ mod tests {
             || obj.downcast_ref::<u8>().is_some()
     }
 
-    fn is_even(obj: &dyn Object) -> bool {
+    fn is_even(obj: &dyn Type) -> bool {
         obj.as_any().downcast_ref::<EvenInteger>().is_some()
     }
 
@@ -103,9 +104,21 @@ mod tests {
         }
     }
 
+    impl Type for EvenInteger {
+        fn type_id(&self) -> TypeId {
+            TypeId::of::<Self>()
+        }
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+        fn parent(&self) -> Option<&dyn Type> {
+            None
+        }
+    }
+
     #[test]
     fn predicate_relationships() {
-        let x: &dyn Object = &EvenInteger::new(42).unwrap();
+        let x: &dyn Type = &EvenInteger::new(42).unwrap();
 
         assert!(Predicate(is_even).check(x));
 
