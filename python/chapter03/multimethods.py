@@ -1,11 +1,13 @@
+from chapter03.trie import Trie
+
 
 class SimpleDispatchStore:
     def __init__(self):
         self.rules = {}
 
-    def get_handler(self, args, kwargs):
+    def get_handler(self, *args):
         for signature, handler in self.rules.items():
-            if signature.matches(args, kwargs):
+            if self.match_signature(signature, args):
                 return handler
         return None
 
@@ -13,9 +15,27 @@ class SimpleDispatchStore:
         for signature in applicability:
             self.rules[signature] = handler
 
+    @staticmethod
+    def match_signature(types, args):
+        if len(args) != len(types):
+            return False
+        return all(isinstance(a, t) for a, t in zip(args, types))
+
+
+class TrieDispatchStore:
+    def __init__(self):
+        self.trie = TypeTrie()
+
+    def get_handler(self, *args):
+        return self.trie.get_a_value(args)
+
+    def add_handler(self, applicability, handler):
+        for signature in applicability:
+            self.trie.set_path_value(signature, handler)
+
 
 class MultiMethod:
-    def __init__(self, name, default_handler=None, dispatch_store=SimpleDispatchStore):
+    def __init__(self, name, default_handler=None, dispatch_store=TrieDispatchStore):
         self.name = name
         self.default_handler = default_handler or make_inapplicable(name)
         self.dispatch_store = dispatch_store()
@@ -23,59 +43,60 @@ class MultiMethod:
     def add_handler(self, applicability, handler):
         self.dispatch_store.add_handler(applicability, handler)
 
-    def __call__(self, *args, **kwargs):
-        handler = (self.dispatch_store.get_handler(args, kwargs)
+    def __call__(self, *args):
+        handler = (self.dispatch_store.get_handler(*args)
                    or self.default_handler)
-        return handler(*args, **kwargs)
+        return handler(*args)
 
 
 def make_inapplicable(name):
-    def handler(*args, **kwargs):
-        raise TypeError(f"{name} not applicable to {args} {kwargs}")
+    def handler(*args):
+        raise TypeError(f"{name} not applicable to {args}")
+
     return handler
 
 
-class Signature:
-    def __init__(self, types, kwtypes):
-        self.types = types
-        self.kwtypes = kwtypes
+class TypeTrie(Trie):
+    def __init__(self):
+        super().__init__()
 
-    def matches(self, args, kwargs):
-        if len(args) < len(self.types):
-            return False
-
-        if len(args) + len(kwargs) != len(self.types) + len(self.kwtypes):
-            return False
-
-        for a, t in zip(args, self.types):
-            if not isinstance(a, t):
-                return False
-
-        for a, t in zip(args[len(self.types):], self.kwtypes.values()):
-            if not isinstance(a, t):
-                return False
-
-        for name, a in kwargs.items():
-            t = self.kwtypes.get(name)
-            if not (t and isinstance(a, t)):
-                return False
-
-        return True
+    def add_edge(self, ty):
+        assert isinstance(ty, type)
+        return super().add_edge(TypePredicate(ty))
 
 
-def match_args(*types, **kwtypes):
+class TypePredicate:
+    def __init__(self, ty):
+        assert isinstance(ty, type)
+        self.type = ty
+
+    def __call__(self, arg):
+        return isinstance(arg, self.type)
+
+    def __eq__(self, other):
+        if isinstance(other, TypePredicate):
+            return self.type == other.type
+        else:
+            return self.type == other
+
+    def __hash__(self):
+        return hash(self.type)
+
+    def __repr__(self):
+        return f"TypePredicate({self.type})"
+
+
+def match_args(*types):
     assert all(isinstance(t, type) for t in types)
-    assert all(isinstance(t, type) for t in kwtypes.values())
-    return [Signature(types, kwtypes)]
+    return [types]
 
 
 if __name__ == '__main__':
     plus = MultiMethod("plus")
+    minus = MultiMethod("minus")
 
-    plus.add_handler(match_args(a=int, b=int), lambda a, b: a + b)
+    plus.add_handler(match_args(int, int), lambda a, b: a + b)
 
     assert plus(1, 2) == 3
 
-    # todo: pass keyword types as keyword arguments to handler, even if the concrete arguments were passed by value?
-    plus.add_handler(match_args(a=int, c=int), lambda a, b: a + b)
-    assert plus(1, 2) != 3  # should call the lambda with a=1 and c=2, which is supposed to fail
+    print("OK")

@@ -6,7 +6,7 @@ class Trie:
 
     def add_edge(self, predicate):
         assert predicate not in self.edges
-        new_node = Trie()
+        new_node = self.__class__()
         self.edges[predicate] = new_node
         return new_node
 
@@ -44,8 +44,6 @@ class Trie:
             if predicate(sequence[0]):
                 matches.extend(next_node.get_matching_tries(sequence[1:]))
 
-        if not matches:
-            raise KeyError(sequence[0])
         return matches
 
     def get_a_value(self, sequence):

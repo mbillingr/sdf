@@ -46,8 +46,7 @@ def test_set_path_value_creates_path_if_necessary():
 
 
 def test_match_single_feature_that_does_not_match():
-    with pytest.raises(KeyError, match="a"):
-        Trie().get_matching_tries(["a"])
+    assert Trie().get_matching_tries(["a"]) == []
 
 
 def test_match_single_feature_that_matches():
