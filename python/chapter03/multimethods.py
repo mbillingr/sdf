@@ -8,9 +8,31 @@ class DispatchStore:
     def add_handler(self, applicability, handler):
         raise NotImplementedError("Subclass Responsibility")
 
+    def set_default_handler(self, handler):
+        raise NotImplementedError("Subclass Responsibility")
 
-class SimpleDispatchStore(DispatchStore):
+    def get_default_handler(self):
+        raise NotImplementedError("Subclass Responsibility")
+
+
+class DefaultDispatchStore(DispatchStore):
+    def __init__(self, default_handler=None):
+        super().__init__()
+        self.default_handler = default_handler
+
+    def get_handler(self):
+        return self.default_handler
+
+    def set_default_handler(self, handler):
+        self.default_handler = handler
+
+    def get_default_handler(self):
+        return self.default_handler
+
+
+class SimpleDispatchStore(DefaultDispatchStore):
     def __init__(self):
+        super().__init__()
         self.rules = {}
 
     def get_handler(self, *args):
@@ -30,8 +52,9 @@ class SimpleDispatchStore(DispatchStore):
         return all(isinstance(a, t) for a, t in zip(args, types))
 
 
-class TrieDispatchStore(DispatchStore):
+class TrieDispatchStore(DefaultDispatchStore):
     def __init__(self):
+        super().__init__()
         self.trie = TypeTrie()
 
     def get_handler(self, *args):
@@ -72,12 +95,20 @@ class ChainingDispatchStore(RankingDispatchStore):
     def __init__(self):
         super().__init__(order=Order, select=self.chain_handlers)
 
-    @staticmethod
-    def chain_handlers(handlers):
-        handler = handlers[-1]
-        for h in handlers[:-1][::-1]:
-            handler = lambda *args: h(handler, *args)
-        return handler
+    def chain_handlers(self, handlers):
+        handler_chain = self.get_default_handler()
+        for h in handlers[::-1]:
+            handler_chain = HandlerChain(h, handler_chain)
+        return handler_chain
+
+
+class HandlerChain:
+    def __init__(self, handler, next_handler):
+        self.handler = handler
+        self.next_handler = next_handler
+
+    def __call__(self, *args):
+        return self.handler(self.next_handler, *args)
 
 
 class Order:
@@ -100,15 +131,16 @@ class Order:
 class MultiMethod:
     def __init__(self, name, default_handler=None, dispatch_store=TrieDispatchStore):
         self.name = name
-        self.default_handler = default_handler or make_inapplicable(name)
         self.dispatch_store = dispatch_store()
+        self.dispatch_store.set_default_handler(default_handler or make_inapplicable(name))
 
     def add_handler(self, applicability, handler):
         self.dispatch_store.add_handler(applicability, handler)
 
     def __call__(self, *args):
-        handler = (self.dispatch_store.get_handler(*args)
-                   or self.default_handler)
+        handler = self.dispatch_store.get_handler(*args)
+        if handler is None:
+            handler = self.dispatch_store.get_default_handler()
         return handler(*args)
 
 

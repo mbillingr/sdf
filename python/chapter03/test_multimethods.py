@@ -1,16 +1,12 @@
 from unittest.mock import Mock
-from chapter03.multimethods import SimpleDispatchStore, TrieDispatchStore, RankingDispatchStore
+from chapter03.multimethods import (DispatchStore, SimpleDispatchStore, TrieDispatchStore, RankingDispatchStore,
+                                    ChainingDispatchStore, DefaultDispatchStore)
 from chapter03.multimethods import MultiMethod, match_args
 from chapter03.multimethods import TypeTrie, TypePredicate
 import pytest
 
 
-class NullDispatchStore:
-    def get_handler(self, *_):
-        return None
-
-
-class TrivialDispatchStore:
+class TrivialDispatchStore(DefaultDispatchStore):
     def __init__(self, handler):
         self.handler = handler
 
@@ -33,7 +29,7 @@ def test_multimethod_returns_handler_result():
 
 def test_multimethod_default_handler():
     default_handler = Mock()
-    foo = MultiMethod("foo", default_handler=default_handler, dispatch_store=NullDispatchStore)
+    foo = MultiMethod("foo", default_handler=default_handler, dispatch_store=DefaultDispatchStore)
 
     foo()
 
@@ -158,3 +154,43 @@ def test_ranking_dispatch_store():
 
     assert set(created_orders) == {(object,), (int,)}
     assert handler == specific_handler
+
+
+def test_handler_chaining():
+    delegation_count = 0
+
+    def delegate(next_handler, *args):
+        nonlocal delegation_count
+        delegation_count += 1
+        return next_handler(*args)
+
+    dispatch_store = ChainingDispatchStore()
+
+    default_handler = Mock()
+    dispatch_store.set_default_handler(default_handler)
+
+    handlers = [delegate, delegate, Mock()]
+    hchain = dispatch_store.chain_handlers(handlers)
+
+    hchain()
+
+    handlers[-1].assert_called_once()
+    default_handler.assert_not_called()
+    assert delegation_count == 2
+
+
+def test_handler_chaining_finishes_with_default_handler():
+    def delegate(next_handler, *args):
+        return next_handler(*args)
+
+    dispatch_store = ChainingDispatchStore()
+
+    default_handler = Mock()
+    dispatch_store.set_default_handler(default_handler)
+
+    handlers = [delegate, delegate]
+    hchain = dispatch_store.chain_handlers(handlers)
+
+    hchain()
+
+    assert default_handler.called_once_with(())
