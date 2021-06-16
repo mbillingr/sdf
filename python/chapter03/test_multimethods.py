@@ -1,6 +1,7 @@
 from unittest.mock import Mock
-from chapter03.multimethods import MultiMethod, match_args, SimpleDispatchStore, TypeTrie, TypePredicate, \
-    TrieDispatchStore
+from chapter03.multimethods import SimpleDispatchStore, TrieDispatchStore, RankingDispatchStore
+from chapter03.multimethods import MultiMethod, match_args
+from chapter03.multimethods import TypeTrie, TypePredicate
 import pytest
 
 
@@ -119,3 +120,41 @@ def test_trie_dispatch_store_selects_handler_based_on_all_arguments():
 
     assert dispatch_store.get_handler(1.0, 2) == float_int_handler
     assert dispatch_store.get_handler(3, 4.0) == int_float_handler
+
+
+def test_trie_dispatch_store_ambiguous_rule_resolving_depends_on_insertion_order():
+    general_handler = Mock(name='general')
+    specific_handler = Mock(name='specific')
+
+    dispatch_store1 = TrieDispatchStore()
+    dispatch_store1.add_handler(match_args(object), general_handler)
+    dispatch_store1.add_handler(match_args(int), specific_handler)
+
+    dispatch_store2 = TrieDispatchStore()
+    dispatch_store2.add_handler(match_args(int), specific_handler)
+    dispatch_store2.add_handler(match_args(object), general_handler)
+
+    assert dispatch_store1.get_handler(0) == general_handler
+    assert dispatch_store2.get_handler(0) == specific_handler
+
+
+def test_ranking_dispatch_store():
+    created_orders = []
+
+    def order(signature):
+        created_orders.append(signature)
+        return [-{object: 0, int: 1}[ty] for ty in signature]
+
+    select_first = lambda x: x[0]
+    dispatch_store = RankingDispatchStore(order=order, select=select_first)
+
+    general_handler = Mock(name='general')
+    dispatch_store.add_handler(match_args(object), general_handler)
+
+    specific_handler = Mock(name='specific')
+    dispatch_store.add_handler(match_args(int), specific_handler)
+
+    handler = dispatch_store.get_handler(0)
+
+    assert set(created_orders) == {(object,), (int,)}
+    assert handler == specific_handler

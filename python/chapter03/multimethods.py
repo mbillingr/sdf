@@ -1,7 +1,15 @@
 from chapter03.trie import Trie
 
 
-class SimpleDispatchStore:
+class DispatchStore:
+    def get_handler(self, *args):
+        raise NotImplementedError("Subclass Responsibility")
+
+    def add_handler(self, applicability, handler):
+        raise NotImplementedError("Subclass Responsibility")
+
+
+class SimpleDispatchStore(DispatchStore):
     def __init__(self):
         self.rules = {}
 
@@ -22,7 +30,7 @@ class SimpleDispatchStore:
         return all(isinstance(a, t) for a, t in zip(args, types))
 
 
-class TrieDispatchStore:
+class TrieDispatchStore(DispatchStore):
     def __init__(self):
         self.trie = TypeTrie()
 
@@ -32,6 +40,61 @@ class TrieDispatchStore:
     def add_handler(self, applicability, handler):
         for signature in applicability:
             self.trie.set_path_value(signature, handler)
+
+
+class RankingDispatchStore(SimpleDispatchStore):
+    def __init__(self, order, select):
+        super().__init__()
+        self.order = order
+        self.select = select
+
+    def get_handler(self, *args):
+        matches = []
+        for signature, handler in self.rules.items():
+            if self.match_signature(signature, args):
+                matches.append((signature, handler))
+        if not matches:
+            return None
+        matches = sorted(matches, key=lambda m: self.order(m[0]))
+        return self.select(matches)[1]
+
+
+class MostSpecificDispatchStore(RankingDispatchStore):
+    def __init__(self):
+        super().__init__(order=Order, select=self.select_first)
+
+    @staticmethod
+    def select_first(handlers):
+        return handlers[0]
+
+
+class ChainingDispatchStore(RankingDispatchStore):
+    def __init__(self):
+        super().__init__(order=Order, select=self.chain_handlers)
+
+    @staticmethod
+    def chain_handlers(handlers):
+        handler = handlers[-1]
+        for h in handlers[:-1][::-1]:
+            handler = lambda *args: h(handler, *args)
+        return handler
+
+
+class Order:
+    def __init__(self, signature):
+        self.signature = signature
+
+    def __lt__(self, other):
+        for t1, t2 in zip(self.signature, other.signature):
+            if t1 == t2:
+                continue
+            elif isinstance(t1, t2):
+                return True
+            elif isinstance(t2, t1):
+                return False
+            else:
+                continue
+        return False
 
 
 class MultiMethod:
