@@ -13,19 +13,19 @@ use crate::chapter03::generic_procedures::metadata::{
     get_generic_metadata, ConcreteMetadata, Metadata,
 };
 use crate::chapter03::generic_procedures::predicate::Predicate;
+use crate::chapter03::DebugAny;
 use dispatch_store::DispatchStore;
 pub use dispatch_store::SimpleDispatchStore;
 use predicate::PredicateFn;
-use std::any::Any;
 use std::sync::{Arc, RwLock};
 
-type GenericFn = Arc<dyn 'static + Sync + Send + Fn(GenericArgs<'_, '_>) -> GenericResult>;
-type GenericResult = Result<Arc<dyn Any>, Error>;
-type GenericArgs<'a, 'o> = &'a [&'o dyn Any];
+pub type GenericFn = Arc<dyn 'static + Sync + Send + Fn(GenericArgs<'_, '_>) -> GenericResult>;
+pub type GenericResult = Result<Arc<dyn DebugAny>, Error>;
+pub type GenericArgs<'a, 'o> = &'a [&'o dyn DebugAny];
 
-type Handler = GenericFn;
-type Applicability = Vec<Vec<Predicate>>;
-type Error = Arc<dyn ToString>;
+pub type Handler = GenericFn;
+pub type Applicability = Vec<Vec<Predicate>>;
+pub type Error = Arc<dyn ToString>;
 
 pub fn make_generic_procedure_constructor<T: DispatchStore>(
     dispatch_store_maker: impl 'static + Fn() -> T,
@@ -73,11 +73,11 @@ mod tests {
 
     use super::*;
 
-    fn is_i64(obj: &dyn Any) -> bool {
+    fn is_i64(obj: &dyn DebugAny) -> bool {
         obj.downcast_ref::<i64>().is_some()
     }
 
-    fn is_string(obj: &dyn Any) -> bool {
+    fn is_string(obj: &dyn DebugAny) -> bool {
         obj.downcast_ref::<String>().is_some()
     }
 

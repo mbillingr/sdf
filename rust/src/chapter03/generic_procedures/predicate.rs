@@ -1,10 +1,10 @@
+use crate::chapter03::DebugAny;
 use lazy_static::lazy_static;
-use std::any::Any;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::RwLock;
 
-pub type PredicateFn = fn(&dyn Any) -> bool;
+pub type PredicateFn = fn(&dyn DebugAny) -> bool;
 
 #[derive(Copy, Clone)]
 pub struct Predicate(PredicateFn);
@@ -30,7 +30,7 @@ impl Hash for Predicate {
 }
 
 impl Predicate {
-    pub fn check(&self, obj: &dyn Any) -> bool {
+    pub fn check(&self, obj: &dyn DebugAny) -> bool {
         if (self.0)(obj) {
             return true;
         }
@@ -74,9 +74,8 @@ lazy_static! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::any::{Any, TypeId};
 
-    fn is_integer(obj: &dyn Any) -> bool {
+    fn is_integer(obj: &dyn DebugAny) -> bool {
         obj.downcast_ref::<i64>().is_some()
             || obj.downcast_ref::<u64>().is_some()
             || obj.downcast_ref::<i32>().is_some()
@@ -87,7 +86,7 @@ mod tests {
             || obj.downcast_ref::<u8>().is_some()
     }
 
-    fn is_even(obj: &dyn Any) -> bool {
+    fn is_even(obj: &dyn DebugAny) -> bool {
         obj.downcast_ref::<EvenInteger>().is_some()
     }
 
@@ -105,7 +104,7 @@ mod tests {
 
     #[test]
     fn predicate_relationships() {
-        let x: &dyn Any = &EvenInteger::new(42).unwrap();
+        let x: &dyn DebugAny = &EvenInteger::new(42).unwrap();
 
         assert!(Predicate(is_even).check(x));
 
