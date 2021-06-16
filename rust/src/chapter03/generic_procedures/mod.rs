@@ -13,15 +13,15 @@ use crate::chapter03::generic_procedures::metadata::{
     get_generic_metadata, ConcreteMetadata, Metadata,
 };
 use crate::chapter03::generic_procedures::predicate::Predicate;
-use crate::chapter03::type_structure::Type;
 use dispatch_store::DispatchStore;
 pub use dispatch_store::SimpleDispatchStore;
 use predicate::PredicateFn;
+use std::any::Any;
 use std::sync::{Arc, RwLock};
 
 type GenericFn = Arc<dyn 'static + Sync + Send + Fn(GenericArgs<'_, '_>) -> GenericResult>;
-type GenericResult = Result<Arc<dyn Type>, Error>;
-type GenericArgs<'a, 'o> = &'a [&'o dyn Type];
+type GenericResult = Result<Arc<dyn Any>, Error>;
+type GenericArgs<'a, 'o> = &'a [&'o dyn Any];
 
 type Handler = GenericFn;
 type Applicability = Vec<Vec<Predicate>>;
@@ -73,12 +73,12 @@ mod tests {
 
     use super::*;
 
-    fn is_i64(obj: &dyn Type) -> bool {
-        obj.as_any().downcast_ref::<i64>().is_some()
+    fn is_i64(obj: &dyn Any) -> bool {
+        obj.downcast_ref::<i64>().is_some()
     }
 
-    fn is_string(obj: &dyn Type) -> bool {
-        obj.as_any().downcast_ref::<String>().is_some()
+    fn is_string(obj: &dyn Any) -> bool {
+        obj.downcast_ref::<String>().is_some()
     }
 
     #[test]
@@ -88,8 +88,8 @@ mod tests {
         let plus = generic_procedure("plus", None);
         define_generic_procedure_handler(&plus, all_args(2, is_i64), |args| match args {
             [a, b] => {
-                let a = (*a).as_any().downcast_ref::<i64>().unwrap();
-                let b = (*b).as_any().downcast_ref::<i64>().unwrap();
+                let a = (*a).downcast_ref::<i64>().unwrap();
+                let b = (*b).downcast_ref::<i64>().unwrap();
                 let c: i64 = a + b;
                 Ok(Arc::new(c))
             }
@@ -97,9 +97,7 @@ mod tests {
         });
 
         assert_eq!(
-            (*plus(&[&1i64, &2i64]).ok().unwrap())
-                .as_any()
-                .downcast_ref::<i64>(),
+            (*plus(&[&1i64, &2i64]).ok().unwrap()).downcast_ref::<i64>(),
             Some(&3)
         );
 
@@ -107,8 +105,8 @@ mod tests {
 
         define_generic_procedure_handler(&plus, all_args(2, is_string), |args| match args {
             [a, b] => {
-                let a = (*a).as_any().downcast_ref::<String>().unwrap();
-                let b = (*b).as_any().downcast_ref::<String>().unwrap();
+                let a = (*a).downcast_ref::<String>().unwrap();
+                let b = (*b).downcast_ref::<String>().unwrap();
                 Ok(Arc::new(a.clone() + b))
             }
             _ => Err(Arc::new("wrong number of arguments")),
@@ -118,7 +116,6 @@ mod tests {
             (*plus(&[&"foo".to_string(), &"bar".to_string()])
                 .ok()
                 .unwrap())
-            .as_any()
             .downcast_ref::<String>()
             .unwrap(),
             "foobar"
