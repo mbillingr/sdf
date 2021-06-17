@@ -1,6 +1,8 @@
 use crate::chapter03::adventure_game::dynamic_type::Obj;
+use crate::chapter03::adventure_game::objects::exit::is_exit;
 use crate::chapter03::adventure_game::objects::{container, exit};
 use crate::chapter03::adventure_game::property_table::Properties;
+use crate::chapter03::generic_procedures::predicate::declare_superset;
 use crate::chapter03::DebugAny;
 use std::cell::RefCell;
 
@@ -27,4 +29,8 @@ pub fn add_exit(place: &Obj, exit: Obj) {
         .unwrap()
         .borrow_mut()
         .push(exit);
+}
+
+pub fn install_generic_procedure_handlers() {
+    declare_superset(is_place, is_exit);
 }

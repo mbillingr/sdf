@@ -8,11 +8,11 @@ use crate::chapter03::DebugAny;
 pub trait Properties {
     fn set_property(&self, key: &'static str, value: Obj);
 
-    fn get_property(&self, key: &'static str) -> Option<Obj>;
-
     fn set_raw_property<T: 'static + std::fmt::Debug>(&self, key: &'static str, value: T) {
         self.set_property(key, dynamic_type::obj(value))
     }
+
+    fn get_property(&self, key: &'static str) -> Option<Obj>;
 
     fn has_property(&self, key: &'static str) -> bool {
         self.get_property(key).is_some()

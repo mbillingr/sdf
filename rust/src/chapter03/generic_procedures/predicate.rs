@@ -52,6 +52,19 @@ impl Predicate {
             .or_insert(vec![])
             .push(self.clone());
     }
+
+    pub fn is_sub_predicate(&self, sup: &Predicate) -> bool {
+        if self == sup {
+            return true;
+        }
+
+        SUBSETS
+            .read()
+            .unwrap()
+            .get(sup)
+            .map(|subs| subs.iter().any(|s| self.is_sub_predicate(s)))
+            .unwrap_or(false)
+    }
 }
 
 pub fn declare_superset(sub: PredicateFn, sup: PredicateFn) {
@@ -65,6 +78,10 @@ pub fn declare_superset(sub: PredicateFn, sup: PredicateFn) {
             .or_insert(vec![])
             .push(sub);
     }
+}
+
+pub fn is_sub_predicate(a: PredicateFn, b: PredicateFn) -> bool {
+    Predicate(a).is_sub_predicate(&Predicate(b))
 }
 
 lazy_static! {

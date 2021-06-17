@@ -6,8 +6,11 @@
 //! Implementing multiple dispatch and property types in Python could be useful. I'll try that next.
 //! I wonder how all this would fare in Julia with its first-class multiple-dispatch...
 
+use crate::chapter03::adventure_game::objects::avatar::make_avatar;
 use crate::chapter03::adventure_game::objects::mobile_thing::is_mobile_thing;
 use crate::chapter03::adventure_game::objects::place::is_place;
+use crate::chapter03::adventure_game::objects::screen::make_screen;
+use crate::chapter03::adventure_game::property_table::Properties;
 use dynamic_type::Obj;
 use objects::{exit, place};
 use rand::{thread_rng, Rng};
@@ -35,7 +38,6 @@ fn random_bias(x: i64) -> f64 {
 }
 
 fn connect(place1: &Obj, d1: Direction, d2: Direction, place2: &Obj) {
-    println!("{:?}", place1);
     assert!(place::is_place(&**place1));
     assert!(place::is_place(&**place2));
     let exit12 = exit::make_exit(place1.clone(), place2.clone(), d1);
@@ -63,11 +65,30 @@ fn move_internal(mobile_thing: &Obj, from: &Obj, to: &Obj) {
     unimplemented!()
 }
 
-#[test]
-pub fn main() {
-    use Direction::*;
+struct AdventureGame {
+    my_avatar: Obj,
+}
 
-    objects::install_generic_procedure_handlers();
+impl AdventureGame {
+    pub fn new(my_name: &str) -> Self {
+        let all_places = create_world();
+        let start_location = all_places
+            .iter()
+            .find(|place| {
+                let p = place.get_property("name").unwrap();
+                p.downcast_ref::<String>().unwrap() == "Lobby"
+            })
+            .unwrap()
+            .clone();
+        let screen = make_screen();
+        Self {
+            my_avatar: make_avatar(my_name, start_location, screen),
+        }
+    }
+}
+
+fn create_world() -> Vec<Obj> {
+    use Direction::*;
 
     let lobby = place::make_place("Lobby");
     let restroom = place::make_place("Restroom");
@@ -76,6 +97,26 @@ pub fn main() {
     connect(&lobby, East, West, &restroom);
     connect_one_way(&lobby, West, &infinite_corridor);
     connect(&infinite_corridor, North, South, &infinite_corridor);
+
+    vec![lobby, restroom, infinite_corridor]
+}
+
+#[test]
+pub fn main() {
+    use crate::chapter03::adventure_game::dynamic_type::obj;
+    use crate::chapter03::adventure_game::generic_procedures::send_message;
+    use crate::chapter03::adventure_game::objects::place::{is_place, make_place};
+
+    objects::install_generic_procedure_handlers();
+
+    let place = make_place("WORLD");
+
+    let screen = make_screen();
+    send_message(&[&vec![obj("hello"), place], &*screen])
+        .map_err(|e| e.to_string())
+        .unwrap();
+
+    let game = AdventureGame::new("Hotzenplotz");
 
     //let generic_procedure = make_generic_procedure_constructor(SimpleDispatchStore::new);
 

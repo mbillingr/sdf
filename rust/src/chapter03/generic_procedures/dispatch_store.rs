@@ -1,5 +1,6 @@
 use crate::chapter03::generic_procedures::predicate::Predicate;
 use crate::chapter03::generic_procedures::{Applicability, GenericArgs, Handler};
+use std::cmp::Ordering;
 
 pub trait DispatchStore: 'static + Send + Sync {
     fn add_handler(&mut self, applicability: Applicability, handler: Handler);
@@ -13,6 +14,10 @@ pub struct SimpleDispatchStore {
 impl SimpleDispatchStore {
     pub fn new() -> Self {
         SimpleDispatchStore { rules: vec![] }
+    }
+
+    pub fn get_rules(&self) -> &[(Vec<Predicate>, Handler)] {
+        &self.rules
     }
 
     fn predicates_match(predicates: &[Predicate], args: GenericArgs) -> bool {
@@ -42,4 +47,55 @@ impl DispatchStore for SimpleDispatchStore {
             .find(|(predicates, _)| Self::predicates_match(predicates, args))
             .map(|(_, handler)| handler)
     }
+}
+
+pub struct SubsettingDispatchStore {
+    delegate: SimpleDispatchStore,
+    choose_handler: fn(&[&Handler]) -> &Handler,
+}
+
+impl SubsettingDispatchStore {
+    pub fn new(choose_handler: fn(&[&Handler]) -> &Handler) -> Self {
+        Self {
+            delegate: SimpleDispatchStore::new(),
+            choose_handler,
+        }
+    }
+}
+
+impl DispatchStore for SubsettingDispatchStore {
+    fn add_handler(&mut self, applicability: Applicability, handler: Handler) {
+        self.delegate.add_handler(applicability, handler)
+    }
+
+    fn get_handler(&self, args: GenericArgs) -> Option<&Handler> {
+        let mut matching: Vec<_> = self
+            .delegate
+            .get_rules()
+            .iter()
+            .filter(|(predicates, _)| SimpleDispatchStore::predicates_match(predicates, args))
+            .collect();
+        matching.sort_by(|(a, _), (b, _)| cmp_predicates(a, b));
+        let handlers: Vec<_> = matching.into_iter().map(|(_, h)| h).collect();
+        (self.choose_handler)(handlers)
+    }
+}
+
+fn cmp_predicates(a: &[Predicate], b: &[Predicate]) -> Ordering {
+    for (p1, p2) in a.iter().zip(b) {
+        if p1 == p2 {
+            continue;
+        }
+        if p1.is_sub_predicate(p2) {
+            return Ordering::Less;
+        }
+        if p2.is_sub_predicate(p1) {
+            return Ordering::Greater;
+        }
+    }
+    Ordering::Equal
+}
+
+pub fn make_most_specific_dispatch_store() -> impl DispatchStore {
+    SubsettingDispatchStore::new(|handlers| &handlers[0])
 }

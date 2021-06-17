@@ -3,7 +3,9 @@ use crate::chapter03::adventure_game::generic_procedures::generic_move;
 use crate::chapter03::adventure_game::objects::person::is_person;
 use crate::chapter03::adventure_game::objects::place::is_place;
 use crate::chapter03::adventure_game::objects::thing;
+use crate::chapter03::adventure_game::objects::thing::is_thing;
 use crate::chapter03::adventure_game::property_table::Properties;
+use crate::chapter03::generic_procedures::predicate::declare_superset;
 use crate::chapter03::generic_procedures::{define_generic_procedure_handler, match_args};
 use crate::chapter03::DebugAny;
 
@@ -23,4 +25,6 @@ pub fn install_generic_procedure_handlers() {
         match_args(&[is_person, is_place, is_place, is_person]),
         |_args| unimplemented!(),
     );
+
+    declare_superset(is_mobile_thing, is_thing);
 }

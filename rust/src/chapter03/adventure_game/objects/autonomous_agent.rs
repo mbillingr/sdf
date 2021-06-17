@@ -1,6 +1,8 @@
 use crate::chapter03::adventure_game::dynamic_type::Obj;
 use crate::chapter03::adventure_game::objects::person;
+use crate::chapter03::adventure_game::objects::person::is_person;
 use crate::chapter03::adventure_game::property_table::Properties;
+use crate::chapter03::generic_procedures::predicate::declare_superset;
 use crate::chapter03::DebugAny;
 
 pub fn is_autonomous_agent(obj: &dyn DebugAny) -> bool {
@@ -19,4 +21,8 @@ pub fn make_autonomous_agent(
     obj.set_raw_property("restlessness", restlessness);
     obj.set_raw_property("acquisitiveness", acquisitiveness);
     obj
+}
+
+pub fn install_generic_procedure_handlers() {
+    declare_superset(is_autonomous_agent, is_person);
 }

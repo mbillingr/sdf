@@ -16,3 +16,5 @@ pub fn make_object(name: impl ToString) -> Obj {
     table.set_raw_property("description", name);
     return dynamic_type::obj(table);
 }
+
+pub fn install_generic_procedure_handlers() {}

@@ -5,8 +5,8 @@ macro_rules! obj {
     (new mut $value:expr) => { Arc::new(RwLock::new($value)) };
 }
 
-mod dispatch_store;
-mod metadata;
+pub mod dispatch_store;
+pub mod metadata;
 pub mod predicate;
 
 use crate::chapter03::generic_procedures::metadata::{
@@ -20,7 +20,7 @@ use predicate::PredicateFn;
 use std::sync::{Arc, RwLock};
 
 pub type GenericFn = Arc<dyn 'static + Sync + Send + Fn(GenericArgs<'_, '_>) -> GenericResult>;
-pub type GenericResult = Result<Arc<dyn DebugAny>, Error>;
+pub type GenericResult = Result<Option<Arc<dyn DebugAny>>, Error>;
 pub type GenericArgs<'a, 'o> = &'a [&'o dyn DebugAny];
 
 pub type Handler = GenericFn;
@@ -91,13 +91,13 @@ mod tests {
                 let a = (*a).downcast_ref::<i64>().unwrap();
                 let b = (*b).downcast_ref::<i64>().unwrap();
                 let c: i64 = a + b;
-                Ok(Arc::new(c))
+                Ok(Some(Arc::new(c)))
             }
             _ => Err(Arc::new("wrong number of arguments")),
         });
 
         assert_eq!(
-            (*plus(&[&1i64, &2i64]).ok().unwrap()).downcast_ref::<i64>(),
+            (*plus(&[&1i64, &2i64]).ok().unwrap().unwrap()).downcast_ref::<i64>(),
             Some(&3)
         );
 
@@ -107,7 +107,7 @@ mod tests {
             [a, b] => {
                 let a = (*a).downcast_ref::<String>().unwrap();
                 let b = (*b).downcast_ref::<String>().unwrap();
-                Ok(Arc::new(a.clone() + b))
+                Ok(Some(Arc::new(a.clone() + b)))
             }
             _ => Err(Arc::new("wrong number of arguments")),
         });
@@ -115,6 +115,7 @@ mod tests {
         assert_eq!(
             (*plus(&[&"foo".to_string(), &"bar".to_string()])
                 .ok()
+                .unwrap()
                 .unwrap())
             .downcast_ref::<String>()
             .unwrap(),
