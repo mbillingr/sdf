@@ -7,9 +7,10 @@
 //! I wonder how all this would fare in Julia with its first-class multiple-dispatch...
 
 use crate::chapter03::adventure_game::objects::avatar::{look_around, make_avatar};
-use crate::chapter03::adventure_game::objects::mobile_thing::is_mobile_thing;
-use crate::chapter03::adventure_game::objects::place::is_place;
+use crate::chapter03::adventure_game::objects::mobile_thing::{is_mobile_thing, make_mobile_thing};
+use crate::chapter03::adventure_game::objects::place::{add_vista, is_place};
 use crate::chapter03::adventure_game::objects::screen::make_screen;
+use crate::chapter03::adventure_game::objects::thing::make_thing;
 use crate::chapter03::adventure_game::property_table::Properties;
 use crate::chapter03::generic_procedures::GenericResult;
 use dynamic_type::Obj;
@@ -103,10 +104,17 @@ fn create_world() -> Vec<Obj> {
     let lobby = place::make_place("Lobby");
     let restroom = place::make_place("Restroom");
     let infinite_corridor = place::make_place("Infinite Corridor");
+    let mountains = place::make_place("distant mountains");
+
+    add_vista(&lobby, mountains.clone());
 
     connect(&lobby, East, West, &restroom);
     connect_one_way(&lobby, West, &infinite_corridor);
     connect(&infinite_corridor, North, South, &infinite_corridor);
+
+    make_thing("pot plant", lobby.clone());
+    make_thing("reception desk", lobby.clone());
+    make_mobile_thing("pen", lobby.clone());
 
     vec![lobby, restroom, infinite_corridor]
 }

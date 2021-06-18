@@ -103,3 +103,7 @@ fn cmp_predicates(a: &[Predicate], b: &[Predicate]) -> Ordering {
 pub fn make_most_specific_dispatch_store() -> impl DispatchStore {
     SubsettingDispatchStore::new(|handlers| &handlers[0])
 }
+
+pub fn make_chaining_dispatch_store() -> impl DispatchStore {
+    SubsettingDispatchStore::new(|_handlers| unimplemented!())
+}

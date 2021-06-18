@@ -1,7 +1,11 @@
 use crate::chapter03::adventure_game::dynamic_type::{obj, Obj};
 use crate::chapter03::adventure_game::generic_procedures::SEND_MESSAGE;
+use crate::chapter03::adventure_game::objects::container::get_things;
+use crate::chapter03::adventure_game::objects::exit::get_direction;
 use crate::chapter03::adventure_game::objects::person;
-use crate::chapter03::adventure_game::objects::person::is_person;
+use crate::chapter03::adventure_game::objects::person::{
+    exits_here, get_bag, is_person, people_here, things_here, vistas_here,
+};
 use crate::chapter03::adventure_game::objects::screen::{is_message, tell};
 use crate::chapter03::adventure_game::objects::thing::get_location;
 use crate::chapter03::adventure_game::property_table::Properties;
@@ -36,6 +40,40 @@ pub fn install_generic_procedure_handlers() {
 
 pub fn look_around(avatar: &Obj) -> GenericResult {
     assert!(is_avatar(&**avatar));
+
     tell(&obj(vec![obj("You are in"), get_location(avatar)]), avatar)?;
-    unimplemented!()
+
+    let my_bag = get_bag(avatar);
+    let my_things = get_things(&my_bag);
+    if !my_things.is_empty() {
+        tell(
+            &obj(vec![obj("Your bag contains:"), obj(my_things)]),
+            avatar,
+        )?;
+    }
+
+    let mut things = things_here(avatar);
+    things.extend(people_here(avatar));
+    if !things.is_empty() {
+        tell(&obj(vec![obj("You see here:"), obj(things)]), avatar)?;
+    }
+
+    let vistas = vistas_here(avatar);
+    if !vistas.is_empty() {
+        tell(&obj(vec![obj("You can see:"), obj(vistas)]), avatar)?;
+    }
+
+    let exits = exits_here(avatar);
+    tell(
+        &obj(if exits.is_empty() {
+            vec![
+                obj("There are no exits..."),
+                obj("you are dead and gone to heaven!"),
+            ]
+        } else {
+            let directions: Vec<_> = exits.iter().map(get_direction).collect();
+            vec![obj("You can exit:"), obj(directions)]
+        }),
+        avatar,
+    )
 }

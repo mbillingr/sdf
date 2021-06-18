@@ -1,4 +1,6 @@
-use crate::chapter03::generic_procedures::dispatch_store::make_most_specific_dispatch_store;
+use crate::chapter03::generic_procedures::dispatch_store::{
+    make_chaining_dispatch_store, make_most_specific_dispatch_store,
+};
 use crate::chapter03::generic_procedures::{
     make_generic_procedure_constructor, GenericArgs, GenericFn, GenericResult, Handler,
     SimpleDispatchStore,
@@ -13,12 +15,18 @@ lazy_static! {
         Arc::new(make_generic_procedure_constructor(
             make_most_specific_dispatch_store
         ));
+    pub static ref CHAINING_GENERIC_PROCEDURE: Arc<dyn Send + Sync + Fn(&str, Option<Handler>) -> GenericFn> =
+        Arc::new(make_generic_procedure_constructor(
+            make_chaining_dispatch_store
+        ));
     pub static ref DEBUG_FORMAT: GenericFn = MOST_SPECIFIC_GENERIC_PROCEDURE(
         "debug-format",
         Some(Arc::new(debug_format_default_handler))
     );
-    pub static ref GENERIC_MOVE: GenericFn = MOST_SPECIFIC_GENERIC_PROCEDURE("generic-move", None);
+    pub static ref SET_UP: GenericFn = CHAINING_GENERIC_PROCEDURE("set-up", None);
+    pub static ref TEAR_DOWN: GenericFn = CHAINING_GENERIC_PROCEDURE("tear-down", None);
     pub static ref SEND_MESSAGE: GenericFn = MOST_SPECIFIC_GENERIC_PROCEDURE("send-message", None);
+    pub static ref GENERIC_MOVE: GenericFn = MOST_SPECIFIC_GENERIC_PROCEDURE("generic-move", None);
 }
 
 fn debug_format_default_handler(args: GenericArgs) -> GenericResult {

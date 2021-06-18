@@ -21,6 +21,12 @@ pub fn make_exit(from: Obj, to: Obj, direction: Direction) -> Obj {
     return obj;
 }
 
+pub fn get_direction(exit: &Obj) -> Direction {
+    assert!(is_exit(&**exit));
+    let direction = exit.get_property("direction").unwrap();
+    *direction.downcast_ref().unwrap()
+}
+
 pub fn install_generic_procedure_handlers() {
     declare_superset(is_exit, is_object);
 }

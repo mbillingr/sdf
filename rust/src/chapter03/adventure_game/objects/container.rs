@@ -15,6 +15,19 @@ pub fn make_container(name: impl ToString) -> Obj {
     return obj;
 }
 
+pub fn get_things(container: &Obj) -> Vec<Obj> {
+    assert!(is_container(&**container));
+    let things = container.get_property("things").unwrap();
+    let things_typed = things.downcast_ref::<Vec<Obj>>().unwrap();
+    things_typed.clone()
+}
+
+pub fn add_thing(container: &Obj, thing: Obj) {
+    let mut things = get_things(container);
+    things.push(thing);
+    container.set_raw_property("things", things);
+}
+
 pub fn install_generic_procedure_handlers() {
     declare_superset(is_container, is_object);
 }

@@ -21,6 +21,12 @@ impl Deref for Obj {
     }
 }
 
+impl PartialEq for Obj {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+
 impl fmt::Debug for Obj {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Ok(Some(str_obj)) = DEBUG_FORMAT(&[&*self.0]) {

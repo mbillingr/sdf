@@ -26,6 +26,6 @@ pub fn install_generic_procedure_handlers() {
     define_generic_procedure_handler(&DEBUG_FORMAT, match_args(&[is_object]), |args| {
         let name = args[0].get_property("name").unwrap();
         let name = name.downcast_ref::<String>().unwrap();
-        Ok(Some(Arc::new(format!("<{}>", name))))
+        Ok(Some(Arc::new(format!("{}", name))))
     });
 }
