@@ -51,11 +51,11 @@ impl DispatchStore for SimpleDispatchStore {
 
 pub struct SubsettingDispatchStore {
     delegate: SimpleDispatchStore,
-    choose_handler: fn(&[&Handler]) -> &Handler,
+    choose_handler: fn(Vec<&Handler>) -> &Handler,
 }
 
 impl SubsettingDispatchStore {
-    pub fn new(choose_handler: fn(&[&Handler]) -> &Handler) -> Self {
+    pub fn new(choose_handler: fn(Vec<&Handler>) -> &Handler) -> Self {
         Self {
             delegate: SimpleDispatchStore::new(),
             choose_handler,
@@ -77,7 +77,7 @@ impl DispatchStore for SubsettingDispatchStore {
             .collect();
         matching.sort_by(|(a, _), (b, _)| cmp_predicates(a, b));
         let handlers: Vec<_> = matching.into_iter().map(|(_, h)| h).collect();
-        (self.choose_handler)(handlers)
+        Some((self.choose_handler)(handlers))
     }
 }
 
