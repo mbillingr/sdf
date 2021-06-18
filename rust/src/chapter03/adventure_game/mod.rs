@@ -6,19 +6,20 @@
 //! Implementing multiple dispatch and property types in Python could be useful. I'll try that next.
 //! I wonder how all this would fare in Julia with its first-class multiple-dispatch...
 
-use crate::chapter03::adventure_game::objects::avatar::make_avatar;
+use crate::chapter03::adventure_game::objects::avatar::{look_around, make_avatar};
 use crate::chapter03::adventure_game::objects::mobile_thing::is_mobile_thing;
 use crate::chapter03::adventure_game::objects::place::is_place;
 use crate::chapter03::adventure_game::objects::screen::make_screen;
 use crate::chapter03::adventure_game::property_table::Properties;
+use crate::chapter03::generic_procedures::GenericResult;
 use dynamic_type::Obj;
 use objects::{exit, place};
 use rand::{thread_rng, Rng};
 
-mod dynamic_type;
-mod generic_procedures;
-mod objects;
-mod property_table;
+pub mod dynamic_type;
+pub mod generic_procedures;
+pub mod objects;
+pub mod property_table;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Direction {
@@ -33,11 +34,11 @@ pub enum Direction {
     Skew,
 }
 
-fn random_bias(x: i64) -> f64 {
+pub fn random_bias(x: i64) -> f64 {
     1.0 / thread_rng().gen_range(1..=x) as f64
 }
 
-fn connect(place1: &Obj, d1: Direction, d2: Direction, place2: &Obj) {
+pub fn connect(place1: &Obj, d1: Direction, d2: Direction, place2: &Obj) {
     assert!(place::is_place(&**place1));
     assert!(place::is_place(&**place2));
     let exit12 = exit::make_exit(place1.clone(), place2.clone(), d1);
@@ -46,14 +47,14 @@ fn connect(place1: &Obj, d1: Direction, d2: Direction, place2: &Obj) {
     place::add_exit(place2, exit21);
 }
 
-fn connect_one_way(place1: &Obj, d1: Direction, place2: &Obj) {
+pub fn connect_one_way(place1: &Obj, d1: Direction, place2: &Obj) {
     assert!(place::is_place(&**place1));
     assert!(place::is_place(&**place2));
     let exit12 = exit::make_exit(place1.clone(), place2.clone(), d1);
     place::add_exit(place1, exit12);
 }
 
-fn move_internal(mobile_thing: &Obj, from: &Obj, to: &Obj) {
+pub fn move_internal(mobile_thing: &Obj, from: &Obj, to: &Obj) {
     assert!(is_mobile_thing(&**mobile_thing));
     assert!(is_place(&**from));
     assert!(is_place(&**to));
@@ -65,7 +66,7 @@ fn move_internal(mobile_thing: &Obj, from: &Obj, to: &Obj) {
     unimplemented!()
 }
 
-struct AdventureGame {
+pub struct AdventureGame {
     my_avatar: Obj,
 }
 
@@ -78,12 +79,21 @@ impl AdventureGame {
                 let p = place.get_property("name").unwrap();
                 p.downcast_ref::<String>().unwrap() == "Lobby"
             })
-            .unwrap()
-            .clone();
+            .cloned()
+            .unwrap();
         let screen = make_screen();
         Self {
             my_avatar: make_avatar(my_name, start_location, screen),
         }
+    }
+
+    pub fn repl(&self) -> GenericResult {
+        self.whats_here()?;
+        unimplemented!()
+    }
+
+    pub fn whats_here(&self) -> GenericResult {
+        look_around(&self.my_avatar)
     }
 }
 
@@ -104,19 +114,20 @@ fn create_world() -> Vec<Obj> {
 #[test]
 pub fn main() {
     use crate::chapter03::adventure_game::dynamic_type::obj;
-    use crate::chapter03::adventure_game::generic_procedures::send_message;
-    use crate::chapter03::adventure_game::objects::place::{is_place, make_place};
+    use crate::chapter03::adventure_game::generic_procedures::SEND_MESSAGE;
+    use crate::chapter03::adventure_game::objects::place::make_place;
 
     objects::install_generic_procedure_handlers();
 
     let place = make_place("WORLD");
 
     let screen = make_screen();
-    send_message(&[&vec![obj("hello"), place], &*screen])
+    SEND_MESSAGE(&[&vec![obj("hello"), place], &*screen])
         .map_err(|e| e.to_string())
         .unwrap();
 
     let game = AdventureGame::new("Hotzenplotz");
+    game.repl().map_err(|s| s.to_string()).unwrap();
 
     //let generic_procedure = make_generic_procedure_constructor(SimpleDispatchStore::new);
 

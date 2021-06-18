@@ -77,7 +77,11 @@ impl DispatchStore for SubsettingDispatchStore {
             .collect();
         matching.sort_by(|(a, _), (b, _)| cmp_predicates(a, b));
         let handlers: Vec<_> = matching.into_iter().map(|(_, h)| h).collect();
-        Some((self.choose_handler)(handlers))
+        if handlers.is_empty() {
+            None
+        } else {
+            Some((self.choose_handler)(handlers))
+        }
     }
 }
 

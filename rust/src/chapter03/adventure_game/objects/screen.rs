@@ -1,9 +1,11 @@
 use crate::chapter03::adventure_game::dynamic_type::{as_table, Obj};
-use crate::chapter03::adventure_game::generic_procedures::send_message;
+use crate::chapter03::adventure_game::generic_procedures::SEND_MESSAGE;
 use crate::chapter03::adventure_game::objects::object::{is_object, make_object};
 use crate::chapter03::adventure_game::property_table::Properties;
 use crate::chapter03::generic_procedures::predicate::declare_superset;
-use crate::chapter03::generic_procedures::{define_generic_procedure_handler, match_args};
+use crate::chapter03::generic_procedures::{
+    define_generic_procedure_handler, match_args, GenericResult,
+};
 use crate::chapter03::DebugAny;
 
 pub fn is_screen(obj: &dyn DebugAny) -> bool {
@@ -18,7 +20,7 @@ pub fn make_screen() -> Obj {
 
 pub fn install_generic_procedure_handlers() {
     define_generic_procedure_handler(
-        &send_message,
+        &SEND_MESSAGE,
         match_args(&[is_message, is_screen]),
         |args| {
             display_message(args[0], &*args[1].get_property("port").unwrap());
@@ -29,7 +31,11 @@ pub fn install_generic_procedure_handlers() {
     declare_superset(is_screen, is_object);
 }
 
-fn is_message(obj: &dyn DebugAny) -> bool {
+pub fn tell(message: &Obj, person: &Obj) -> GenericResult {
+    SEND_MESSAGE(&[&**message, &**person])
+}
+
+pub fn is_message(obj: &dyn DebugAny) -> bool {
     obj.downcast_ref::<Vec<Obj>>().is_some()
 }
 

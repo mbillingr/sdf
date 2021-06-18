@@ -18,3 +18,7 @@ pub fn make_thing(name: impl ToString, location: Obj) -> Obj {
 pub fn install_generic_procedure_handlers() {
     declare_superset(is_thing, is_object);
 }
+
+pub fn get_location(obj: &Obj) -> Obj {
+    obj.get_property("location").unwrap()
+}

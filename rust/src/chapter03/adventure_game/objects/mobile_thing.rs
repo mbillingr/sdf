@@ -1,5 +1,5 @@
 use crate::chapter03::adventure_game::dynamic_type::Obj;
-use crate::chapter03::adventure_game::generic_procedures::generic_move;
+use crate::chapter03::adventure_game::generic_procedures::GENERIC_MOVE;
 use crate::chapter03::adventure_game::objects::person::is_person;
 use crate::chapter03::adventure_game::objects::place::is_place;
 use crate::chapter03::adventure_game::objects::thing;
@@ -21,7 +21,7 @@ pub fn make_mobile_thing(name: impl ToString, location: Obj) -> Obj {
 
 pub fn install_generic_procedure_handlers() {
     define_generic_procedure_handler(
-        &generic_move,
+        &GENERIC_MOVE,
         match_args(&[is_person, is_place, is_place, is_person]),
         |_args| unimplemented!(),
     );

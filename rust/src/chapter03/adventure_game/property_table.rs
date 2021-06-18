@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use crate::chapter03::adventure_game::dynamic_type;
 use crate::chapter03::adventure_game::dynamic_type::Obj;
 use crate::chapter03::DebugAny;
+use std::fmt::Debug;
 
 pub trait Properties {
     fn set_property(&self, key: &'static str, value: Obj);

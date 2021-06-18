@@ -1,12 +1,39 @@
-use std::sync::Arc;
-
+use crate::chapter03::adventure_game::generic_procedures::DEBUG_FORMAT;
 use crate::chapter03::adventure_game::property_table::Table;
 use crate::chapter03::DebugAny;
+use std::any::TypeId;
+use std::fmt;
+use std::ops::Deref;
+use std::sync::Arc;
 
-pub type Obj = Arc<dyn DebugAny>;
+#[derive(Clone)]
+pub struct Obj(Arc<dyn DebugAny>);
 
 pub fn obj<T: DebugAny>(x: T) -> Obj {
-    Arc::new(x)
+    assert_ne!(TypeId::of::<T>(), TypeId::of::<Obj>());
+    Obj(Arc::new(x))
+}
+
+impl Deref for Obj {
+    type Target = dyn DebugAny;
+    fn deref(&self) -> &Self::Target {
+        &*self.0
+    }
+}
+
+impl fmt::Debug for Obj {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Ok(Some(str_obj)) = DEBUG_FORMAT(&[&*self.0]) {
+            let fmt_str = str_obj
+                .downcast_ref::<&str>()
+                .copied()
+                .or_else(|| str_obj.downcast_ref::<String>().map(|s| s.as_str()))
+                .unwrap();
+            write!(f, "{}", fmt_str)
+        } else {
+            unreachable!()
+        }
+    }
 }
 
 pub fn as_table(obj: &dyn DebugAny) -> Option<&Table> {
