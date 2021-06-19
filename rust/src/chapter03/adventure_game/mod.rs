@@ -16,6 +16,8 @@ use crate::chapter03::generic_procedures::GenericResult;
 use dynamic_type::Obj;
 use objects::{exit, place};
 use rand::{thread_rng, Rng};
+use std::collections::HashMap;
+use std::io::Write;
 
 pub mod dynamic_type;
 pub mod generic_procedures;
@@ -69,6 +71,7 @@ pub fn move_internal(mobile_thing: &Obj, from: &Obj, to: &Obj) {
 
 pub struct AdventureGame {
     my_avatar: Obj,
+    commands: HashMap<&'static str, CommandHandler>,
 }
 
 impl AdventureGame {
@@ -85,17 +88,55 @@ impl AdventureGame {
         let screen = make_screen();
         Self {
             my_avatar: make_avatar(my_name, start_location, screen),
+            commands: Self::make_commands(),
         }
     }
 
     pub fn repl(&self) -> GenericResult {
         self.whats_here()?;
-        unimplemented!()
+        loop {
+            print!("\n> ");
+            std::io::stdout().flush().unwrap();
+            let mut buffer = String::new();
+            std::io::stdin().read_line(&mut buffer).unwrap();
+            let cmd = self.parse_command(&buffer);
+            match self.invoke_command(cmd[0], &cmd[1..]) {
+                Some(result) => {
+                    result?;
+                }
+                None => println!("Unknown command"),
+            }
+        }
+    }
+
+    fn parse_command<'a>(&self, buffer: &'a str) -> Vec<&'a str> {
+        let cmd: Vec<_> = buffer.trim().split(char::is_whitespace).collect();
+        cmd
+    }
+
+    pub fn invoke_command(&self, cmd: &str, args: &[&str]) -> Option<GenericResult> {
+        match self.commands.get(cmd)? {
+            CommandHandler::Nullary(handler) if args.is_empty() => Some(handler(self)),
+            CommandHandler::Nullary(_) => None,
+            CommandHandler::Unary(handler) if args.len() == 1 => Some(handler(self, args[0])),
+            CommandHandler::Unary(_) => None,
+        }
+    }
+
+    fn make_commands() -> HashMap<&'static str, CommandHandler> {
+        let mut commands = HashMap::new();
+        commands.insert("whats-here", CommandHandler::Nullary(Self::whats_here));
+        commands
     }
 
     pub fn whats_here(&self) -> GenericResult {
         look_around(&self.my_avatar)
     }
+}
+
+enum CommandHandler {
+    Nullary(fn(&AdventureGame) -> GenericResult),
+    Unary(fn(&AdventureGame, &str) -> GenericResult),
 }
 
 fn create_world() -> Vec<Obj> {
@@ -117,49 +158,4 @@ fn create_world() -> Vec<Obj> {
     make_mobile_thing("pen", lobby.clone());
 
     vec![lobby, restroom, infinite_corridor]
-}
-
-#[test]
-pub fn main() {
-    use crate::chapter03::adventure_game::dynamic_type::obj;
-    use crate::chapter03::adventure_game::generic_procedures::SEND_MESSAGE;
-    use crate::chapter03::adventure_game::objects::place::make_place;
-
-    objects::install_generic_procedure_handlers();
-
-    let place = make_place("WORLD");
-
-    let screen = make_screen();
-    SEND_MESSAGE(&[&vec![obj("hello"), place], &*screen])
-        .map_err(|e| e.to_string())
-        .unwrap();
-
-    let game = AdventureGame::new("Hotzenplotz");
-    game.repl().map_err(|s| s.to_string()).unwrap();
-
-    //let generic_procedure = make_generic_procedure_constructor(SimpleDispatchStore::new);
-
-    /*let grendel: Obj<dyn Type> = obj(Troll::new(
-        "Grendel",
-        lobby.clone(),
-        3,
-        random_bias(3),
-        random_bias(3),
-    ));
-
-    // try to move Grendel into the infinite corridor
-
-    generic_move(&[&*grendel, &lobby, &infinite_corridor, &*grendel])
-        .map_err(|e| e.to_string())
-        .unwrap();
-
-    assert_eq!(
-        grendel
-            .upcast::<Troll>()
-            .unwrap()
-            .location()
-            .borrow()
-            .name(),
-        "Infinite Corridor"
-    );*/
 }
