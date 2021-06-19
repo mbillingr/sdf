@@ -50,7 +50,7 @@ impl SimpleDispatchStore {
         predicates
             .iter()
             .zip(args)
-            .all(|(pred, arg)| pred.check(*arg))
+            .all(|(pred, arg)| pred.check(&***arg))
     }
 }
 

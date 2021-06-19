@@ -6,6 +6,14 @@
 //! Implementing multiple dispatch and property types in Python could be useful. I'll try that next.
 //! I wonder how all this would fare in Julia with its first-class multiple-dispatch...
 
+use std::collections::HashMap;
+use std::io::Write;
+use std::sync::Arc;
+
+use rand::{thread_rng, Rng};
+
+use objects::{exit, place};
+
 use crate::chapter03::adventure_game::clock::Clock;
 use crate::chapter03::adventure_game::objects::avatar::{look_around, make_avatar};
 use crate::chapter03::adventure_game::objects::mobile_thing::{is_mobile_thing, make_mobile_thing};
@@ -14,16 +22,10 @@ use crate::chapter03::adventure_game::objects::screen::make_screen;
 use crate::chapter03::adventure_game::objects::student::make_student;
 use crate::chapter03::adventure_game::objects::thing::make_thing;
 use crate::chapter03::adventure_game::property_table::Properties;
+use crate::chapter03::dynamic_type::Obj;
 use crate::chapter03::generic_procedures::GenericResult;
-use dynamic_type::Obj;
-use objects::{exit, place};
-use rand::{thread_rng, Rng};
-use std::collections::HashMap;
-use std::io::Write;
-use std::sync::Arc;
 
 pub mod clock;
-pub mod dynamic_type;
 pub mod generic_procedures;
 pub mod objects;
 pub mod property_table;
@@ -43,6 +45,14 @@ pub enum Direction {
 
 pub fn random_bias(x: i64) -> f64 {
     1.0 / thread_rng().gen_range(1..=x) as f64
+}
+
+pub fn flip_coin(bias: f64) -> bool {
+    thread_rng().gen::<f64>() >= bias
+}
+
+pub fn random_choice<T>(items: Vec<T>) -> T {
+    unimplemented!()
 }
 
 pub fn connect(place1: &Obj, d1: Direction, d2: Direction, place2: &Obj) {
@@ -182,8 +192,8 @@ fn create_world(clock: &mut Clock) -> Vec<Obj> {
     connect_one_way(&lobby, West, &infinite_corridor);
     connect(&infinite_corridor, North, South, &infinite_corridor);
 
-    make_thing("pot plant", lobby.clone());
-    make_thing("reception desk", lobby.clone());
+    make_thing("pot-plant", lobby.clone());
+    make_thing("reception-desk", lobby.clone());
     make_mobile_thing("pen", lobby.clone());
 
     let student = make_student("Student", lobby.clone(), 0.1, 0.1, clock);

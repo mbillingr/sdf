@@ -1,8 +1,8 @@
-use crate::chapter03::adventure_game::dynamic_type::Obj;
 use crate::chapter03::adventure_game::objects::object;
 use crate::chapter03::adventure_game::objects::object::is_object;
 use crate::chapter03::adventure_game::property_table::Properties;
 use crate::chapter03::adventure_game::Direction;
+use crate::chapter03::dynamic_type::Obj;
 use crate::chapter03::generic_procedures::predicate::declare_superset;
 use crate::chapter03::DebugAny;
 

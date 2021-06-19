@@ -9,6 +9,7 @@ pub mod dispatch_store;
 pub mod metadata;
 pub mod predicate;
 
+use crate::chapter03::dynamic_type::Obj;
 use crate::chapter03::generic_procedures::metadata::{
     get_generic_metadata, ConcreteMetadata, Metadata,
 };
@@ -20,8 +21,8 @@ use predicate::PredicateFn;
 use std::sync::{Arc, RwLock};
 
 pub type GenericFn = Arc<dyn 'static + Sync + Send + Fn(GenericArgs<'_, '_>) -> GenericResult>;
-pub type GenericResult = Result<Option<Arc<dyn DebugAny>>, Error>;
-pub type GenericArgs<'a, 'o> = &'a [&'o dyn DebugAny];
+pub type GenericResult = Result<Option<Obj>, Error>;
+pub type GenericArgs<'a, 'o> = &'a [&'o Obj];
 
 pub type Handler = GenericFn;
 pub type Applicability = Vec<Vec<Predicate>>;
@@ -69,6 +70,7 @@ pub fn match_args(predicates: &[PredicateFn]) -> Applicability {
 
 #[cfg(test)]
 mod tests {
+    use crate::chapter03::dynamic_type::obj;
     use crate::chapter03::generic_procedures::dispatch_store::SimpleDispatchStore;
 
     use super::*;
@@ -91,29 +93,29 @@ mod tests {
                 let a = (*a).downcast_ref::<i64>().unwrap();
                 let b = (*b).downcast_ref::<i64>().unwrap();
                 let c: i64 = a + b;
-                Ok(Some(Arc::new(c)))
+                Ok(Some(obj(c)))
             }
             _ => Err(Arc::new("wrong number of arguments")),
         });
 
         assert_eq!(
-            (*plus(&[&1i64, &2i64]).ok().unwrap().unwrap()).downcast_ref::<i64>(),
+            (*plus(&[&obj(1i64), &obj(2i64)]).ok().unwrap().unwrap()).downcast_ref::<i64>(),
             Some(&3)
         );
 
-        assert!(plus(&[&"foo".to_string(), &"bar".to_string()]).is_err());
+        assert!(plus(&[&obj("foo".to_string()), &obj("bar".to_string())]).is_err());
 
         define_generic_procedure_handler(&plus, all_args(2, is_string), |args| match args {
             [a, b] => {
                 let a = (*a).downcast_ref::<String>().unwrap();
                 let b = (*b).downcast_ref::<String>().unwrap();
-                Ok(Some(Arc::new(a.clone() + b)))
+                Ok(Some(obj(a.clone() + b)))
             }
             _ => Err(Arc::new("wrong number of arguments")),
         });
 
         assert_eq!(
-            (*plus(&[&"foo".to_string(), &"bar".to_string()])
+            (*plus(&[&obj("foo".to_string()), &obj("bar".to_string())])
                 .ok()
                 .unwrap()
                 .unwrap())

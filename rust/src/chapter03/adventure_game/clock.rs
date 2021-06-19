@@ -1,8 +1,10 @@
-use crate::chapter03::adventure_game::objects::thing::is_thing;
-use crate::chapter03::adventure_game::{dynamic_type::Obj, generic_procedures::CLOCK_TICK};
-use crate::chapter03::generic_procedures::GenericResult;
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicU64, Ordering};
+
+use crate::chapter03::adventure_game::generic_procedures::CLOCK_TICK;
+use crate::chapter03::adventure_game::objects::thing::is_thing;
+use crate::chapter03::dynamic_type::Obj;
+use crate::chapter03::generic_procedures::GenericResult;
 
 pub struct Clock {
     current_time: u64,
@@ -20,7 +22,7 @@ impl Clock {
     pub fn tick(&mut self) -> GenericResult {
         self.current_time += 1;
         for thing in &self.things {
-            CLOCK_TICK(&[&**thing])?;
+            CLOCK_TICK(&[thing])?;
         }
         Ok(None)
     }

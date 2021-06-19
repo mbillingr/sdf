@@ -1,8 +1,9 @@
 use crate::chapter03::adventure_game::clock::Clock;
+use crate::chapter03::adventure_game::generic_procedures::CLOCK_TICK;
 use crate::chapter03::adventure_game::objects::autonomous_agent;
 use crate::chapter03::adventure_game::objects::autonomous_agent::is_autonomous_agent;
 use crate::chapter03::adventure_game::property_table::Properties;
-use crate::chapter03::adventure_game::{dynamic_type::Obj, generic_procedures::CLOCK_TICK};
+use crate::chapter03::dynamic_type::Obj;
 use crate::chapter03::generic_procedures::predicate::declare_superset;
 use crate::chapter03::generic_procedures::{define_generic_procedure_handler, match_args};
 use crate::chapter03::DebugAny;
@@ -14,8 +15,8 @@ pub fn is_student(obj: &dyn DebugAny) -> bool {
 pub fn make_student(
     name: impl ToString,
     home: Obj,
-    restlessness: f32,
-    acquisitiveness: f32,
+    restlessness: f64,
+    acquisitiveness: f64,
     clock: &mut Clock,
 ) -> Obj {
     let obj =
@@ -26,10 +27,4 @@ pub fn make_student(
 
 pub fn install_generic_procedure_handlers() {
     declare_superset(is_student, is_autonomous_agent);
-
-    define_generic_procedure_handler(
-        &CLOCK_TICK,
-        match_args(&[is_autonomous_agent]),
-        |_args| unimplemented!(),
-    );
 }

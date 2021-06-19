@@ -1,5 +1,3 @@
-use crate::chapter03::adventure_game::dynamic_type;
-use crate::chapter03::adventure_game::dynamic_type::Obj;
 use crate::chapter03::adventure_game::objects::mobile_thing::is_mobile_thing;
 use crate::chapter03::adventure_game::objects::place::{
     get_exits, get_vistas, people_in_place, things_in_place,
@@ -7,6 +5,8 @@ use crate::chapter03::adventure_game::objects::place::{
 use crate::chapter03::adventure_game::objects::thing::get_location;
 use crate::chapter03::adventure_game::objects::{bag, mobile_thing};
 use crate::chapter03::adventure_game::property_table::Properties;
+use crate::chapter03::dynamic_type;
+use crate::chapter03::dynamic_type::Obj;
 use crate::chapter03::generic_procedures::predicate::declare_superset;
 use crate::chapter03::DebugAny;
 

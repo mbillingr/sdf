@@ -1,4 +1,3 @@
-use crate::chapter03::adventure_game::dynamic_type::{obj, Obj};
 use crate::chapter03::adventure_game::generic_procedures::SEND_MESSAGE;
 use crate::chapter03::adventure_game::objects::container::get_things;
 use crate::chapter03::adventure_game::objects::exit::get_direction;
@@ -9,6 +8,7 @@ use crate::chapter03::adventure_game::objects::person::{
 use crate::chapter03::adventure_game::objects::screen::{is_message, tell};
 use crate::chapter03::adventure_game::objects::thing::get_location;
 use crate::chapter03::adventure_game::property_table::Properties;
+use crate::chapter03::dynamic_type::{obj, Obj};
 use crate::chapter03::generic_procedures::predicate::declare_superset;
 use crate::chapter03::generic_procedures::{
     define_generic_procedure_handler, match_args, GenericResult,
@@ -33,7 +33,7 @@ pub fn install_generic_procedure_handlers() {
         match_args(&[is_message, is_avatar]),
         |args| {
             let screen = args[1].get_property("screen").unwrap();
-            SEND_MESSAGE(&[args[0], &*screen])
+            SEND_MESSAGE(&[args[0], &screen])
         },
     );
 }

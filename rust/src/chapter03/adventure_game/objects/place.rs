@@ -1,9 +1,9 @@
-use crate::chapter03::adventure_game::dynamic_type::Obj;
 use crate::chapter03::adventure_game::objects::container::get_things;
 use crate::chapter03::adventure_game::objects::exit::is_exit;
 use crate::chapter03::adventure_game::objects::person::is_person;
 use crate::chapter03::adventure_game::objects::{container, exit};
 use crate::chapter03::adventure_game::property_table::Properties;
+use crate::chapter03::dynamic_type::Obj;
 use crate::chapter03::generic_procedures::predicate::declare_superset;
 use crate::chapter03::DebugAny;
 use std::cell::RefCell;

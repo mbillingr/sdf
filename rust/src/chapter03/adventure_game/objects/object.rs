@@ -1,12 +1,12 @@
+use std::sync::Arc;
+
 use crate::chapter03::adventure_game::{
-    dynamic_type,
-    dynamic_type::Obj,
     generic_procedures::DEBUG_FORMAT,
     property_table::{Properties, Table},
 };
+use crate::chapter03::dynamic_type::{obj, Obj};
 use crate::chapter03::generic_procedures::{define_generic_procedure_handler, match_args};
-use crate::chapter03::DebugAny;
-use std::sync::Arc;
+use crate::chapter03::{dynamic_type, DebugAny};
 
 pub fn is_object(obj: &dyn DebugAny) -> bool {
     dynamic_type::as_table(obj).is_some()
@@ -26,6 +26,6 @@ pub fn install_generic_procedure_handlers() {
     define_generic_procedure_handler(&DEBUG_FORMAT, match_args(&[is_object]), |args| {
         let name = args[0].get_property("name").unwrap();
         let name = name.downcast_ref::<String>().unwrap();
-        Ok(Some(Arc::new(format!("{}", name))))
+        Ok(Some(obj(format!("{}", name))))
     });
 }

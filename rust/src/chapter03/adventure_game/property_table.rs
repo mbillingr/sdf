@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use crate::chapter03::adventure_game::dynamic_type;
-use crate::chapter03::adventure_game::dynamic_type::Obj;
+use crate::chapter03::dynamic_type;
+use crate::chapter03::dynamic_type::Obj;
 use crate::chapter03::DebugAny;
 use std::fmt::Debug;
 
@@ -17,6 +17,10 @@ pub trait Properties {
 
     fn has_property(&self, key: &'static str) -> bool {
         self.get_property(key).is_some()
+    }
+
+    fn downcast_property<T: 'static + Copy>(&self, key: &'static str) -> Option<T> {
+        self.get_property(key)?.downcast_ref().copied()
     }
 }
 

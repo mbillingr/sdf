@@ -6,7 +6,7 @@ use std::fmt;
 use std::ops::Deref;
 use std::sync::Arc;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Obj(Arc<dyn DebugAny>);
 
 pub fn obj<T: DebugAny>(x: T) -> Obj {
@@ -26,10 +26,13 @@ impl PartialEq for Obj {
         Arc::ptr_eq(&self.0, &other.0)
     }
 }
-
+/*
 impl fmt::Debug for Obj {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Ok(Some(str_obj)) = DEBUG_FORMAT(&[&*self.0]) {
+        if f.alternate() {
+            write!(f, "{:?}", self.0)
+        }
+        else if let Ok(Some(str_obj)) = DEBUG_FORMAT(&[self]) {
             let fmt_str = str_obj
                 .downcast_ref::<&str>()
                 .copied()
@@ -40,7 +43,7 @@ impl fmt::Debug for Obj {
             unreachable!()
         }
     }
-}
+}*/
 
 pub fn as_table(obj: &dyn DebugAny) -> Option<&Table> {
     let result = obj.downcast_ref::<Table>();

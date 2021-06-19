@@ -7,6 +7,7 @@ pub mod generic_procedures;
 pub mod type_structure;
 
 pub mod adventure_game;
+pub mod dynamic_type;
 
 pub trait DebugAny: Any + Debug {
     fn as_any(&self) -> &dyn Any;
