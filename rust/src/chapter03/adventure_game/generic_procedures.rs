@@ -23,8 +23,7 @@ lazy_static! {
         "debug-format",
         Some(Arc::new(debug_format_default_handler))
     );
-    pub static ref SET_UP: GenericFn = CHAINING_GENERIC_PROCEDURE("set-up", None);
-    pub static ref TEAR_DOWN: GenericFn = CHAINING_GENERIC_PROCEDURE("tear-down", None);
+    pub static ref CLOCK_TICK: GenericFn = CHAINING_GENERIC_PROCEDURE("clock-tick", None);
     pub static ref SEND_MESSAGE: GenericFn = MOST_SPECIFIC_GENERIC_PROCEDURE("send-message", None);
     pub static ref GENERIC_MOVE: GenericFn = MOST_SPECIFIC_GENERIC_PROCEDURE("generic-move", None);
 }

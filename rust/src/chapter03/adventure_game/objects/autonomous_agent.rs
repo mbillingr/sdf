@@ -1,3 +1,4 @@
+use crate::chapter03::adventure_game::clock::Clock;
 use crate::chapter03::adventure_game::dynamic_type::Obj;
 use crate::chapter03::adventure_game::objects::person;
 use crate::chapter03::adventure_game::objects::person::is_person;
@@ -16,10 +17,14 @@ pub fn make_autonomous_agent(
     location: Obj,
     restlessness: f32,
     acquisitiveness: f32,
+    clock: &mut Clock,
 ) -> Obj {
     let obj = person::make_person(name, location);
     obj.set_raw_property("restlessness", restlessness);
     obj.set_raw_property("acquisitiveness", acquisitiveness);
+
+    clock.register(obj.clone());
+
     obj
 }
 

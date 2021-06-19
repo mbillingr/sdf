@@ -23,11 +23,10 @@ pub trait Metadata {
 #[derive(Clone)]
 pub struct ConcreteMetadata<T: DispatchStore> {
     dispatch_store: T,
-    default_handler: Handler,
 }
 
 impl<T: DispatchStore> ConcreteMetadata<T> {
-    pub fn new(name: String, dispatch_store: T, default_handler: Option<Handler>) -> Self {
+    pub fn new(name: String, mut dispatch_store: T, default_handler: Option<Handler>) -> Self {
         let default_handler = default_handler.unwrap_or_else(|| {
             Arc::new(move |args| {
                 Err(Arc::new(format!(
@@ -41,14 +40,13 @@ impl<T: DispatchStore> ConcreteMetadata<T> {
             })
         });
 
-        ConcreteMetadata {
-            dispatch_store,
-            default_handler,
-        }
+        dispatch_store.set_default_handler(default_handler);
+
+        ConcreteMetadata { dispatch_store }
     }
 
     pub fn default_handler(&self, args: GenericArgs) -> GenericResult {
-        (self.default_handler)(args)
+        (self.dispatch_store.get_default_handler())(args)
     }
 }
 

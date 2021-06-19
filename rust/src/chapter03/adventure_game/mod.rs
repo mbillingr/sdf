@@ -6,10 +6,12 @@
 //! Implementing multiple dispatch and property types in Python could be useful. I'll try that next.
 //! I wonder how all this would fare in Julia with its first-class multiple-dispatch...
 
+use crate::chapter03::adventure_game::clock::Clock;
 use crate::chapter03::adventure_game::objects::avatar::{look_around, make_avatar};
 use crate::chapter03::adventure_game::objects::mobile_thing::{is_mobile_thing, make_mobile_thing};
 use crate::chapter03::adventure_game::objects::place::{add_vista, is_place};
 use crate::chapter03::adventure_game::objects::screen::make_screen;
+use crate::chapter03::adventure_game::objects::student::make_student;
 use crate::chapter03::adventure_game::objects::thing::make_thing;
 use crate::chapter03::adventure_game::property_table::Properties;
 use crate::chapter03::generic_procedures::GenericResult;
@@ -18,7 +20,9 @@ use objects::{exit, place};
 use rand::{thread_rng, Rng};
 use std::collections::HashMap;
 use std::io::Write;
+use std::sync::Arc;
 
+pub mod clock;
 pub mod dynamic_type;
 pub mod generic_procedures;
 pub mod objects;
@@ -71,12 +75,14 @@ pub fn move_internal(mobile_thing: &Obj, from: &Obj, to: &Obj) {
 
 pub struct AdventureGame {
     my_avatar: Obj,
+    clock: Clock,
     commands: HashMap<&'static str, CommandHandler>,
 }
 
 impl AdventureGame {
     pub fn new(my_name: &str) -> Self {
-        let all_places = create_world();
+        let mut clock = Clock::new();
+        let all_places = create_world(&mut clock);
         let start_location = all_places
             .iter()
             .find(|place| {
@@ -88,12 +94,13 @@ impl AdventureGame {
         let screen = make_screen();
         Self {
             my_avatar: make_avatar(my_name, start_location, screen),
+            clock,
             commands: Self::make_commands(),
         }
     }
 
-    pub fn repl(&self) -> GenericResult {
-        self.whats_here()?;
+    pub fn repl(&mut self) {
+        self.whats_here().map_err(|e| e.to_string()).unwrap();
         loop {
             print!("\n> ");
             std::io::stdout().flush().unwrap();
@@ -101,10 +108,8 @@ impl AdventureGame {
             std::io::stdin().read_line(&mut buffer).unwrap();
             let cmd = self.parse_command(&buffer);
             match self.invoke_command(cmd[0], &cmd[1..]) {
-                Some(result) => {
-                    result?;
-                }
-                None => println!("Unknown command"),
+                Ok(_) => {}
+                Err(e) => println!("{}", e.to_string()),
             }
         }
     }
@@ -114,32 +119,56 @@ impl AdventureGame {
         cmd
     }
 
-    pub fn invoke_command(&self, cmd: &str, args: &[&str]) -> Option<GenericResult> {
-        match self.commands.get(cmd)? {
-            CommandHandler::Nullary(handler) if args.is_empty() => Some(handler(self)),
-            CommandHandler::Nullary(_) => None,
-            CommandHandler::Unary(handler) if args.len() == 1 => Some(handler(self, args[0])),
-            CommandHandler::Unary(_) => None,
+    pub fn invoke_command(&mut self, cmd: &str, args: &[&str]) -> GenericResult {
+        match self.commands.get(cmd) {
+            Some(CommandHandler::Nullary(handler)) if args.is_empty() => handler(self),
+            Some(CommandHandler::Nullary(_)) => Err(Arc::new("expected no arguments")),
+            Some(CommandHandler::Unary(handler)) if args.len() == 1 => handler(self, args[0]),
+            Some(CommandHandler::Unary(_)) => Err(Arc::new("expected one argument")),
+            None => Err(Arc::new("unknown command")),
         }
     }
 
     fn make_commands() -> HashMap<&'static str, CommandHandler> {
         let mut commands = HashMap::new();
         commands.insert("whats-here", CommandHandler::Nullary(Self::whats_here));
+        commands.insert("hang-out", CommandHandler::Unary(Self::hang_out_cmd));
         commands
     }
 
-    pub fn whats_here(&self) -> GenericResult {
+    pub fn whats_here(&mut self) -> GenericResult {
         look_around(&self.my_avatar)
+    }
+
+    pub fn go_cmd(&mut self, direction: &str) -> GenericResult {
+        unimplemented!()
+    }
+
+    pub fn go(&mut self, direction: Direction) -> GenericResult {
+        unimplemented!()
+    }
+
+    pub fn hang_out_cmd(&mut self, ticks: &str) -> GenericResult {
+        let ticks = ticks
+            .parse::<u64>()
+            .map_err(|e| -> Arc<dyn ToString> { Arc::new(e) })?;
+        self.hang_out(ticks)
+    }
+
+    pub fn hang_out(&mut self, ticks: u64) -> GenericResult {
+        for _ in 0..ticks {
+            self.clock.tick()?;
+        }
+        Ok(None)
     }
 }
 
 enum CommandHandler {
-    Nullary(fn(&AdventureGame) -> GenericResult),
-    Unary(fn(&AdventureGame, &str) -> GenericResult),
+    Nullary(fn(&mut AdventureGame) -> GenericResult),
+    Unary(fn(&mut AdventureGame, &str) -> GenericResult),
 }
 
-fn create_world() -> Vec<Obj> {
+fn create_world(clock: &mut Clock) -> Vec<Obj> {
     use Direction::*;
 
     let lobby = place::make_place("Lobby");
@@ -156,6 +185,8 @@ fn create_world() -> Vec<Obj> {
     make_thing("pot plant", lobby.clone());
     make_thing("reception desk", lobby.clone());
     make_mobile_thing("pen", lobby.clone());
+
+    let student = make_student("Student", lobby.clone(), 0.1, 0.1, clock);
 
     vec![lobby, restroom, infinite_corridor]
 }

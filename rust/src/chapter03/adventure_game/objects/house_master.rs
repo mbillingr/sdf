@@ -1,3 +1,4 @@
+use crate::chapter03::adventure_game::clock::Clock;
 use crate::chapter03::adventure_game::dynamic_type::Obj;
 use crate::chapter03::adventure_game::objects::autonomous_agent;
 use crate::chapter03::adventure_game::objects::autonomous_agent::is_autonomous_agent;
@@ -14,8 +15,9 @@ pub fn make_house_master(
     home: Obj,
     restlessness: f32,
     irritability: f32,
+    clock: &mut Clock,
 ) -> Obj {
-    let obj = autonomous_agent::make_autonomous_agent(name, home, restlessness, 1.0 / 10.0);
+    let obj = autonomous_agent::make_autonomous_agent(name, home, restlessness, 1.0 / 10.0, clock);
     obj.set_raw_property("irritability", irritability);
     obj
 }

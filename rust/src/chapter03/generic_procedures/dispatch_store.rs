@@ -1,19 +1,41 @@
 use crate::chapter03::generic_procedures::predicate::Predicate;
-use crate::chapter03::generic_procedures::{Applicability, GenericArgs, Handler};
+use crate::chapter03::generic_procedures::{Applicability, GenericArgs, GenericResult, Handler};
+use crate::chapter03::DebugAny;
 use std::cmp::Ordering;
+use std::sync::Arc;
 
 pub trait DispatchStore: 'static + Send + Sync {
     fn add_handler(&mut self, applicability: Applicability, handler: Handler);
-    fn get_handler(&self, args: GenericArgs) -> Option<&Handler>;
+    fn get_handler(&self, args: GenericArgs) -> Option<Handler>;
+
+    fn set_default_handler(&mut self, handler: Handler);
+    fn get_default_handler(&self) -> &Handler;
+}
+
+fn make_default_handler(name: String) -> Handler {
+    Arc::new(move |args| {
+        Err(Arc::new(format!(
+            "Cannot apply {} to ({})",
+            name,
+            args.iter()
+                .map(|a| format!("{:?}", a))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )))
+    })
 }
 
 pub struct SimpleDispatchStore {
     rules: Vec<(Vec<Predicate>, Handler)>,
+    default_handler: Handler,
 }
 
 impl SimpleDispatchStore {
     pub fn new() -> Self {
-        SimpleDispatchStore { rules: vec![] }
+        SimpleDispatchStore {
+            rules: vec![],
+            default_handler: make_default_handler("unknown".to_string()),
+        }
     }
 
     pub fn get_rules(&self) -> &[(Vec<Predicate>, Handler)] {
@@ -41,24 +63,34 @@ impl DispatchStore for SimpleDispatchStore {
         )
     }
 
-    fn get_handler(&self, args: GenericArgs) -> Option<&Handler> {
+    fn get_handler(&self, args: GenericArgs) -> Option<Handler> {
         self.rules
             .iter()
             .find(|(predicates, _)| Self::predicates_match(predicates, args))
             .map(|(_, handler)| handler)
+            .cloned()
+    }
+
+    fn set_default_handler(&mut self, handler: Handler) {
+        self.default_handler = handler;
+    }
+    fn get_default_handler(&self) -> &Handler {
+        &self.default_handler
     }
 }
 
 pub struct SubsettingDispatchStore {
     delegate: SimpleDispatchStore,
-    choose_handler: fn(Vec<&Handler>) -> &Handler,
+    choose_handler: Arc<Send + Sync + Fn(Vec<&Handler>, &Handler) -> Handler>,
 }
 
 impl SubsettingDispatchStore {
-    pub fn new(choose_handler: fn(Vec<&Handler>) -> &Handler) -> Self {
+    pub fn new(
+        choose_handler: impl 'static + Send + Sync + Fn(Vec<&Handler>, &Handler) -> Handler,
+    ) -> Self {
         Self {
             delegate: SimpleDispatchStore::new(),
-            choose_handler,
+            choose_handler: Arc::new(choose_handler),
         }
     }
 }
@@ -68,7 +100,7 @@ impl DispatchStore for SubsettingDispatchStore {
         self.delegate.add_handler(applicability, handler)
     }
 
-    fn get_handler(&self, args: GenericArgs) -> Option<&Handler> {
+    fn get_handler(&self, args: GenericArgs) -> Option<Handler> {
         let mut matching: Vec<_> = self
             .delegate
             .get_rules()
@@ -80,8 +112,15 @@ impl DispatchStore for SubsettingDispatchStore {
         if handlers.is_empty() {
             None
         } else {
-            Some((self.choose_handler)(handlers))
+            Some((self.choose_handler)(handlers, self.get_default_handler()))
         }
+    }
+
+    fn set_default_handler(&mut self, handler: Handler) {
+        self.delegate.set_default_handler(handler)
+    }
+    fn get_default_handler(&self) -> &Handler {
+        self.delegate.get_default_handler()
     }
 }
 
@@ -101,9 +140,20 @@ fn cmp_predicates(a: &[Predicate], b: &[Predicate]) -> Ordering {
 }
 
 pub fn make_most_specific_dispatch_store() -> impl DispatchStore {
-    SubsettingDispatchStore::new(|handlers| &handlers[0])
+    SubsettingDispatchStore::new(|handlers, _default_handler| handlers[0].clone())
 }
 
 pub fn make_chaining_dispatch_store() -> impl DispatchStore {
-    SubsettingDispatchStore::new(|_handlers| unimplemented!())
+    SubsettingDispatchStore::new(|handlers, default_handler| {
+        let default_handler = default_handler.clone();
+        let handlers: Vec<_> = handlers.into_iter().rev().cloned().collect();
+
+        Arc::new(move |args| {
+            let mut result = default_handler(args)?;
+            for handler in &handlers {
+                result = handler(args)?;
+            }
+            Ok(result)
+        })
+    })
 }

@@ -1,3 +1,4 @@
+use crate::chapter03::adventure_game::clock::Clock;
 use crate::chapter03::adventure_game::dynamic_type::Obj;
 use crate::chapter03::adventure_game::objects::autonomous_agent;
 use crate::chapter03::adventure_game::objects::autonomous_agent::is_autonomous_agent;
@@ -9,8 +10,14 @@ pub fn is_troll(obj: &dyn DebugAny) -> bool {
     autonomous_agent::is_autonomous_agent(obj) && obj.has_property("hunger")
 }
 
-pub fn make_troll(name: impl ToString, place: Obj, restlessness: f32, hunger: f32) -> Obj {
-    let obj = autonomous_agent::make_autonomous_agent(name, place, restlessness, 1.0 / 10.0);
+pub fn make_troll(
+    name: impl ToString,
+    place: Obj,
+    restlessness: f32,
+    hunger: f32,
+    clock: &mut Clock,
+) -> Obj {
+    let obj = autonomous_agent::make_autonomous_agent(name, place, restlessness, 1.0 / 10.0, clock);
     obj.set_raw_property("hunger", hunger);
     obj
 }
