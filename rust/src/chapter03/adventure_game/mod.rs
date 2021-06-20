@@ -1,7 +1,12 @@
 //! Allright!
 //! Generic procedures are kinda weird to implement in Rust, but the result is somewhat OK-ish.
 //! Using the type system to implement a hierarchy of structures is painful. Maybe implementing
-//! these types as runtime entities would have been a better approach.
+//! these types as runtime entities would have been a better approach. The real pain, however, is
+//! in combining the type hierarchy, which is not native to rust with dynamic types and
+//! multifunctions. Implementing generic procedures first, turned out to be a bad idea. When trying
+//! to make them as generic as possible (taking `&dyn Any` arguments) I blocked my to passing
+//! owned game objects on from generic functions. It was also easy to make mistakes such as
+//! forgetting to dereference a game object, which would result in dispatch failures.
 //! I won't pursue this further in Rust.
 //! Implementing multiple dispatch and property types in Python could be useful. I'll try that next.
 //! I wonder how all this would fare in Julia with its first-class multiple-dispatch...
