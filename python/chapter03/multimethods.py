@@ -1,6 +1,10 @@
 from chapter03.trie import Trie
 
 
+def most_specific_generic_procedure(name, default_handler=None):
+    return MultiMethod(name, default_handler, MostSpecificDispatchStore)
+
+
 class DispatchStore:
     def get_handler(self, *args):
         raise NotImplementedError("Subclass Responsibility")
@@ -129,7 +133,7 @@ class Order:
 
 
 class MultiMethod:
-    def __init__(self, name, default_handler=None, dispatch_store=TrieDispatchStore):
+    def __init__(self, name, default_handler=None, dispatch_store: DispatchStore = TrieDispatchStore):
         self.name = name
         self.dispatch_store = dispatch_store()
         self.dispatch_store.set_default_handler(default_handler or make_inapplicable(name))
