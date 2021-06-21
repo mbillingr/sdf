@@ -1,13 +1,11 @@
-from chapter03.adventure_game.objects.person import is_person
-from chapter03.multimethods import most_specific_generic_procedure
 from .debugging import debug_output
+from ..generics import send_message
 
 Message = list
 
-send_message = most_specific_generic_procedure("send-message")
-
 
 def narrate(message, person_or_place):
+    from chapter03.adventure_game.objects.person import is_person
     place = person_or_place
     if is_person(person_or_place):
         place = person_or_place.location
@@ -20,6 +18,10 @@ def tell(message, person):
     send_message(message, person)
     if debug_output():
         send_message(message, debug_output)
+
+
+def say(person, message):
+    narrate([person, "says:", *message], person)
 
 
 def format_message(message):

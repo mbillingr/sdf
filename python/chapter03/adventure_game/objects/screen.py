@@ -1,6 +1,4 @@
-from chapter03.multimethods import match_args
 from .object import Object
-from ..adventure_substrate.messaging import send_message, Message, format_message
 
 
 class Screen(Object):
@@ -10,6 +8,10 @@ class Screen(Object):
     def display(self, msg):
         print(msg)
 
+
+from ..adventure_substrate.messaging import Message, format_message
+from ..generics import send_message
+from chapter03.multimethods import match_args
 
 send_message.add_handler(
     match_args(Message, Screen),

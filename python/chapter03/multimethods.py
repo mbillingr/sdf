@@ -7,16 +7,20 @@ def most_specific_generic_procedure(name, default_handler=None):
 
 class DispatchStore:
     def get_handler(self, *args):
-        raise NotImplementedError("Subclass Responsibility")
+        abstract_method()
 
     def add_handler(self, applicability, handler):
-        raise NotImplementedError("Subclass Responsibility")
+        abstract_method()
 
     def set_default_handler(self, handler):
-        raise NotImplementedError("Subclass Responsibility")
+        abstract_method()
 
     def get_default_handler(self):
-        raise NotImplementedError("Subclass Responsibility")
+        abstract_method()
+
+
+def abstract_method():
+    raise NotImplementedError("Subclass Responsibility")
 
 
 class DefaultDispatchStore(DispatchStore):
@@ -123,9 +127,9 @@ class Order:
         for t1, t2 in zip(self.signature, other.signature):
             if t1 == t2:
                 continue
-            elif isinstance(t1, t2):
+            elif issubclass(t1, t2):
                 return True
-            elif isinstance(t2, t1):
+            elif issubclass(t2, t1):
                 return False
             else:
                 continue
@@ -133,7 +137,7 @@ class Order:
 
 
 class MultiMethod:
-    def __init__(self, name, default_handler=None, dispatch_store: DispatchStore = TrieDispatchStore):
+    def __init__(self, name, default_handler=None, dispatch_store: type[DispatchStore] = TrieDispatchStore):
         self.name = name
         self.dispatch_store = dispatch_store()
         self.dispatch_store.set_default_handler(default_handler or make_inapplicable(name))

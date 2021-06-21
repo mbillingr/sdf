@@ -13,3 +13,8 @@ class Clock:
 
     def unregister(self, thing):
         self.things.remove(thing)
+
+    def tick(self):
+        self.current_time += 1
+        for thing in self.things:
+            thing.clock_tick()

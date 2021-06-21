@@ -11,3 +11,6 @@ class Container(Object):
 
     def add_thing(self, thing):
         self.things.append(thing)
+
+    def remove_thing(self, thing):
+        self.things.remove(thing)

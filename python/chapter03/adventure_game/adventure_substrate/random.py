@@ -2,7 +2,7 @@ import random
 
 
 def random_choice(items):
-    return random.choice(items)
+    return items and random.choice(items)
 
 
 def random_bias(weight):

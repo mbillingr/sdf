@@ -1,14 +1,11 @@
-from chapter03.multimethods import match_args
 from .person import Person
-from .place import Place
-from .screen import Screen
-from ..adventure_substrate.messaging import tell, send_message, Message
+from chapter03.adventure_game import world
 
 
 class Avatar(Person):
-    def __init__(self, name: str, home: Place, screen: Screen):
+    def __init__(self, name: str, home, screen):
         super().__init__(name, home)
-        self.screen: Screen = screen
+        self.screen = screen
 
     def look_around(self):
         tell(["You are in", self.location], self)
@@ -33,6 +30,15 @@ class Avatar(Person):
                   "you are dead and gone to heaven!"],
                  self)
 
+    def enter_place(self):
+        super().enter_place()
+        self.look_around()
+        world.the_clock.tick()
+
+
+from chapter03.multimethods import match_args
+from ..adventure_substrate.messaging import tell, Message
+from ..generics import send_message
 
 send_message.add_handler(
     match_args(Message, Avatar),

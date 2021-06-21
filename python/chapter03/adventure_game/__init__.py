@@ -3,10 +3,9 @@ import random
 from chapter03.adventure_game import world
 from chapter03.adventure_game.adventure_substrate import make_clock
 from chapter03.adventure_game.adventure_substrate.messaging import narrate
-from chapter03.adventure_game.objects.motion import take_exit
 from chapter03.adventure_game.world import create_avatar, create_mit, create_people, create_place
 
-__all__ = ['start_adventure', 'go', 'whats_here']
+__all__ = ['start_adventure', 'go', 'hang_out', 'whats_here']
 
 
 def start_adventure(my_name, create_world=None):
@@ -25,6 +24,11 @@ def whats_here():
 def go(direction):
     exit = world.my_avatar.location.find_exit_in_direction(direction)
     if exit:
-        take_exit(exit, world.my_avatar)
+        world.my_avatar.take_exit(exit)
     else:
         narrate(["No exit in", direction, "direction"], world.my_avatar)
+
+
+def hang_out(ticks):
+    for _ in range(ticks):
+        world.the_clock.tick()

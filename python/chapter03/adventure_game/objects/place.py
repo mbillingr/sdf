@@ -1,10 +1,6 @@
 from typing import Dict, Set
 
-from chapter03.multimethods import match_args
 from .container import Container
-from .exit import Exit
-from .person import is_person
-from ..adventure_substrate.messaging import send_message, Message
 
 
 class Place(Container):
@@ -28,8 +24,21 @@ class Place(Container):
     def find_exit_in_direction(self, direction):
         return self.exits.get(direction)
 
+    def find_exit(self, dst):
+        for exit in self.exits.values():
+            if exit.target == dst:
+                return exit
+        return None
+
+
+from ..adventure_substrate.messaging import Message
+from ..generics import send_message
+from chapter03.multimethods import match_args
 
 send_message.add_handler(
     match_args(Message, Place),
     lambda message, place: [send_message(message, person) for person in place.people_in_place()]
 )
+
+from .person import is_person
+from .exit import Exit

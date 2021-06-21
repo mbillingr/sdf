@@ -9,3 +9,5 @@ from .place import Place
 from .screen import Screen
 from .student import Student
 from .thing import Thing
+
+from . import motion
