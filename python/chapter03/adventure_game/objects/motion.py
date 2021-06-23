@@ -7,6 +7,18 @@ from .person import Person
 from .place import Place
 from .thing import Thing
 
+
+def take_thing(thing, person):
+    move(thing, person.bag, person)
+
+
+def move(thing, destination, actor):
+    generic_move(thing,
+                 thing.location,
+                 destination,
+                 actor)
+
+
 # default generic move
 generic_move.add_handler(
     match_args(Thing, Container, Container, Person),

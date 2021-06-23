@@ -21,6 +21,9 @@ class Place(Container):
     def people_in_place(self):
         return [thing for thing in self.things if is_person(thing)]
 
+    def all_things_in_place(self):
+        return self.things_in_place() + [thing for person in self.people_in_place() for thing in person.get_things()]
+
     def find_exit_in_direction(self, direction):
         return self.exits.get(direction)
 

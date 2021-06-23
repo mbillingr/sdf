@@ -33,3 +33,7 @@ def format_item(item):
         return item.name
     except AttributeError:
         return str(item)
+
+
+def possessive(person):
+    return person.name + "'s"
