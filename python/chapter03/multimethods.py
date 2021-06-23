@@ -137,7 +137,7 @@ class Order:
 
 
 class MultiMethod:
-    def __init__(self, name, default_handler=None, dispatch_store: type[DispatchStore] = TrieDispatchStore):
+    def __init__(self, name, default_handler=None, dispatch_store=TrieDispatchStore):
         self.name = name
         self.dispatch_store = dispatch_store()
         self.dispatch_store.set_default_handler(default_handler or make_inapplicable(name))
