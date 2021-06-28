@@ -2,12 +2,12 @@ import random
 
 from chapter03.adventure_game import world
 from chapter03.adventure_game.adventure_substrate import make_clock
-from chapter03.adventure_game.adventure_substrate.messaging import narrate
+from chapter03.adventure_game.adventure_substrate.messaging import narrate, tell
 from chapter03.adventure_game.objects.motion import take_thing, drop_thing
-from chapter03.adventure_game.ui_support import find_thing
+from chapter03.adventure_game.ui_support import find_person, find_thing, local_possessive
 from chapter03.adventure_game.world import create_avatar, create_mit, create_people, create_place
 
-__all__ = ['start_adventure', 'drop', 'go', 'hang_out', 'take', 'whats_here']
+__all__ = ['start_adventure', 'drop', 'go', 'hang_out', 'look_in_bag', 'take', 'whats_here']
 
 
 def start_adventure(my_name, create_world=None):
@@ -41,6 +41,21 @@ def drop(name):
     thing = find_thing(name, world.my_avatar)
     if thing:
         drop_thing(thing, world.my_avatar)
+
+
+def look_in_bag(person_name=None):
+    if person_name is None:
+        person = world.my_avatar
+    else:
+        person = find_person(person_name)
+
+    if person:
+        referent = local_possessive(person)
+        things = person.get_things()
+        if not things:
+            tell([referent, "bag is empty"], world.my_avatar)
+        else:
+            tell([referent, "bag contains", *things], world.my_avatar)
 
 
 def hang_out(ticks):

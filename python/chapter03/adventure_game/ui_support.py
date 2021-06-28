@@ -1,8 +1,14 @@
-
 from chapter03.adventure_game import world
 from chapter03.adventure_game.adventure_substrate.messaging import tell, possessive
-from chapter03.adventure_game.objects.person import is_person
 from chapter03.adventure_game.objects.object import find_object_by_name
+from chapter03.adventure_game.objects.person import is_person
+
+
+def find_person(name):
+    person = find_object_by_name(name, world.my_avatar.people_here())
+    if not person:
+        tell(["There is no one called", name, "here"], world.my_avatar)
+    return person
 
 
 def find_thing(name, person_or_place):
