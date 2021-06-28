@@ -1,3 +1,4 @@
+from chapter03.multimethods import match_args
 from .debugging import debug_output
 from ..generics import send_message
 
@@ -37,3 +38,9 @@ def format_item(item):
 
 def possessive(person):
     return person.name + "'s"
+
+
+send_message.add_handler(
+    match_args(Message, type(None)),
+    lambda message, thing: print(message, '@', thing)
+)

@@ -1,6 +1,6 @@
 from chapter03.adventure_game import world
 from chapter03.adventure_game.adventure_substrate.messaging import tell, narrate, say
-from chapter03.adventure_game.generics import generic_move
+from chapter03.adventure_game.generics import generic_move, move
 from chapter03.multimethods import match_args
 from .bag import Bag
 from .container import Container
@@ -16,13 +16,6 @@ def take_thing(thing, person):
 
 def drop_thing(thing, person):
     move(thing, person.location, person)
-
-
-def move(thing, destination, actor):
-    generic_move(thing,
-                 thing.location,
-                 destination,
-                 actor)
 
 
 # default generic move
