@@ -3,11 +3,11 @@ import random
 from chapter03.adventure_game import world
 from chapter03.adventure_game.adventure_substrate import make_clock
 from chapter03.adventure_game.adventure_substrate.messaging import narrate
-from chapter03.adventure_game.world import create_avatar, create_mit, create_people, create_place
-from chapter03.adventure_game.objects.motion import take_thing
+from chapter03.adventure_game.objects.motion import take_thing, drop_thing
 from chapter03.adventure_game.ui_support import find_thing
+from chapter03.adventure_game.world import create_avatar, create_mit, create_people, create_place
 
-__all__ = ['start_adventure', 'go', 'hang_out', 'take', 'whats_here']
+__all__ = ['start_adventure', 'drop', 'go', 'hang_out', 'take', 'whats_here']
 
 
 def start_adventure(my_name, create_world=None):
@@ -35,6 +35,12 @@ def take(name):
     thing = find_thing(name, here())
     if thing:
         take_thing(thing, world.my_avatar)
+
+
+def drop(name):
+    thing = find_thing(name, world.my_avatar)
+    if thing:
+        drop_thing(thing, world.my_avatar)
 
 
 def hang_out(ticks):
