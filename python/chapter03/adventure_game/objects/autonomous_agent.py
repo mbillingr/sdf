@@ -12,6 +12,7 @@ class AutonomousAgent(Person):
         world.the_clock.register(self)
 
     def clock_tick(self):
+        super().clock_tick()
         self.move_and_take_stuff()
 
     def move_and_take_stuff(self):

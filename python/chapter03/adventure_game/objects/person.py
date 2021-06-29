@@ -1,7 +1,8 @@
 from .bag import Bag
 from .mobile_thing import MobileThing
 from ..generics import move
-from chapter03.adventure_game.adventure_substrate.messaging import narrate, say
+from chapter03.adventure_game.adventure_substrate.messaging import narrate, say, announce
+from chapter03.adventure_game import world
 
 
 def is_person(obj):
@@ -46,3 +47,21 @@ class Person(MobileThing):
         people = self.people_here()
         if people:
             say(self, ["Hi", *people])
+
+    def suffer(self, hits):
+        say(self, ["Ouch!", hits, "hits is more than I want!"])
+        self.health -= hits
+        if self.health < 1:
+            self.die()
+
+    def die(self):
+        for thing in self.get_things():
+            self.drop_thing(thing)
+        announce("An earth-shattering, soul-piercing scream is heard...")
+        self.health = 0
+        move(self, world.heaven, self)
+
+    def resurrect(self, health):
+        assert health > 0
+        self.health = health
+        move(self, self.origin, self)

@@ -1,5 +1,6 @@
 from chapter03.adventure_game.adventure_substrate.random import random_choice, random_bias
-from chapter03.adventure_game.objects import Avatar, Exit, MobileThing, Place, Screen, Student, Thing
+from chapter03.adventure_game.objects import (Avatar, Exit, MobileThing, Place, Screen, Student, Thing, HouseMaster,
+                                              Troll)
 
 the_clock = None
 all_places = None
@@ -81,12 +82,21 @@ def create_mit():
 
 def create_people(places):
     people = create_students(places)
-    print("WARNING (create_people): not fully implemented")
+    people.extend(create_house_masters(places))
+    people.extend(create_trolls(places))
     return people
 
 
 def create_students(places, student_names=("ben-bitdiddle", "alyssa-hacker", "course-6-frosh", "lambda-man")):
     return [create_student(name, random_choice(places), random_bias(5), random_bias(5)) for name in student_names]
+
+
+def create_house_masters(places, names=("dr-evil", "mr-bigglesworth")):
+    return [HouseMaster(name, random_choice(places), random_bias(3), random_bias(3)) for name in names]
+
+
+def create_trolls(places, names=("grendel", "registrar")):
+    return [Troll(name, random_choice(places), random_bias(3), random_bias(3)) for name in names]
 
 
 def create_place(name):
@@ -95,6 +105,10 @@ def create_place(name):
 
 def create_student(name, home, restlessness, acquisitiveness):
     return Student(name, home, restlessness, acquisitiveness)
+
+
+def create_house_master(name, home, restlessness, irritability):
+    return Hou
 
 
 def create_thing(name, location):
@@ -121,4 +135,3 @@ def can_see(a, b):
 def can_see_both_ways(a, b):
     a.add_vista(b)
     b.add_vista(b)
-

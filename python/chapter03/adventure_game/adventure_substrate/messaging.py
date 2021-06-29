@@ -1,6 +1,7 @@
 from chapter03.multimethods import match_args
 from .debugging import debug_output
 from ..generics import send_message
+from chapter03.adventure_game import world
 
 Message = list
 
@@ -23,6 +24,11 @@ def tell(message, person):
 
 def say(person, message):
     narrate([person, "says:", *message], person)
+
+
+def announce(*message):
+    for place in world.all_places:
+        send_message(list(message), place)
 
 
 def format_message(message):

@@ -17,5 +17,5 @@ class Thing(Object):
 
 send_message.add_handler(
     match_args(Message, Thing),
-    lambda message, thing: print(message, '@', thing)
+    lambda message, thing: None
 )

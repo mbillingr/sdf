@@ -11,3 +11,7 @@ def random_bias(weight):
 
 def flip_coin(bias):
     return random.random() >= bias
+
+
+def random_number(max):
+    return random.randint(1, max)
