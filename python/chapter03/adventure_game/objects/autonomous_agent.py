@@ -9,8 +9,6 @@ class AutonomousAgent(Person):
         self.restlessness = restlessness
         self.acquisitiveness = acquisitiveness
 
-        world.the_clock.register(self)
-
     def clock_tick(self):
         super().clock_tick()
         self.move_and_take_stuff()

@@ -1,8 +1,12 @@
+import math
+
+from chapter03.adventure_game import world
+from chapter03.adventure_game.adventure_substrate.messaging import narrate, say, announce
 from .bag import Bag
 from .mobile_thing import MobileThing
 from ..generics import move
-from chapter03.adventure_game.adventure_substrate.messaging import narrate, say, announce
-from chapter03.adventure_game import world
+
+BASE_HEALTH = 100
 
 
 def is_person(obj):
@@ -12,8 +16,10 @@ def is_person(obj):
 class Person(MobileThing):
     def __init__(self, name: str, home):
         super().__init__(name, home)
-        self.health = 3
+        self.health = BASE_HEALTH
         self.bag = Bag("my-bag", holder=self)
+
+        world.the_clock.register(self)
 
     def get_things(self):
         return self.bag.get_things()
@@ -51,8 +57,21 @@ class Person(MobileThing):
     def suffer(self, hits):
         say(self, ["Ouch!", hits, "hits is more than I want!"])
         self.health -= hits
-        if self.health < 1:
+        if self.health <= 0:
             self.die()
+
+    def heal(self, points):
+        if self.health >= BASE_HEALTH:
+            return
+
+        self.health += points
+        if self.health >= BASE_HEALTH:
+            self.health = BASE_HEALTH
+
+        if self.health == BASE_HEALTH:
+            say(self, ["I feel like new again!"])
+        else:
+            say(self, ["I feel better."])
 
     def die(self):
         for thing in self.get_things():
@@ -65,3 +84,8 @@ class Person(MobileThing):
         assert health > 0
         self.health = health
         move(self, self.origin, self)
+
+    def clock_tick(self):
+        super().clock_tick()
+        heal_amount = math.ceil((BASE_HEALTH - self.health) * 0.1)
+        self.heal(heal_amount)

@@ -1,6 +1,7 @@
 from chapter03.adventure_game.adventure_substrate.messaging import narrate, possessive
-from chapter03.adventure_game.adventure_substrate.random import flip_coin, random_choice, random_number
+from chapter03.adventure_game.adventure_substrate.random import flip_coin, random_choice, clipped_random_number
 from .autonomous_agent import AutonomousAgent
+from .person import BASE_HEALTH
 
 
 class Troll(AutonomousAgent):
@@ -20,4 +21,12 @@ class Troll(AutonomousAgent):
             else:
                 victim = random_choice(people)
                 narrate([self, "takes a bite out of", victim], self)
-                victim.suffer(random_number(3))
+                # Scale the damage of the troll bite so that there is
+                # 1/3 chance that the damage is equal to a typical person's health,
+                # 1/3 chance that the damage is a third of a typical person's health,
+                # and 1/3 chance that it is any value in-between.
+                # This is consistent with the original implementation, where people had
+                # 3 health and a troll bite rolled 1, 2, or 3 with equal probability.
+                min_damage = BASE_HEALTH // 3
+                max_damage = BASE_HEALTH
+                victim.suffer(clipped_random_number(min_damage, max_damage, 1 / 3, 1 / 3))
