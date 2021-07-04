@@ -1,6 +1,6 @@
 from chapter03.adventure_game.adventure_substrate.random import random_choice, random_bias
-from chapter03.adventure_game.objects import (Avatar, Exit, MobileThing, Place, Screen, Student, Thing, HouseMaster,
-                                              Troll)
+from chapter03.adventure_game.objects import (Avatar, Clinic, Exit, MobileThing, Place, Screen, Student, Thing,
+                                              HouseMaster, Troll)
 
 the_clock = None
 all_places = None
@@ -31,6 +31,10 @@ def create_mit():
     bldg_54 = create_place("green-building")
     the_dot = create_place("the-dot")
     dorm_row = create_place("dorm-row")
+
+    medical_center = Clinic("medical-center")
+    can_go_both_ways(medical_center, 'down', 'up', bldg_54)
+    can_go_both_ways(medical_center, 'skew', 'up', place_32g)
 
     can_go_both_ways(lobby_10, 'up', 'down', room_10_250)
     can_go_both_ways(room_10_250, 'up', 'down', barker_library)

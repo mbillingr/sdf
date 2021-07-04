@@ -21,6 +21,9 @@ class Person(MobileThing):
 
         world.the_clock.register(self)
 
+    def is_injured(self):
+        return self.health < BASE_HEALTH
+
     def get_things(self):
         return self.bag.get_things()
 

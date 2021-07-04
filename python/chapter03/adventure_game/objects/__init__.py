@@ -1,6 +1,7 @@
 from . import motion
 from .autonomous_agent import AutonomousAgent
 from .avatar import Avatar
+from .clinic import Clinic
 from .container import Container
 from .exit import Exit
 from .housemaster import HouseMaster
@@ -10,5 +11,5 @@ from .person import Person
 from .place import Place
 from .screen import Screen
 from .student import Student
-from .troll import Troll
 from .thing import Thing
+from .troll import Troll

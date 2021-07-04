@@ -8,6 +8,9 @@ class Object:
     def __repr__(self):
         return self.name or self.__class__.__name__
 
+    def clock_tick(self):
+        pass
+
 
 def find_object_by_name(name, objects):
     for obj in objects:
