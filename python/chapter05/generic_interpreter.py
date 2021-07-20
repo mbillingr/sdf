@@ -1,4 +1,6 @@
+import string
 from dataclasses import dataclass
+import re
 
 from chapter03.generic_procedures import (
     simple_generic_procedure,
@@ -94,6 +96,16 @@ def cons(car, cdr):
     return Pair(car, cdr)
 
 
+def length(obj):
+    if isinstance(obj, Pair):
+        return 1 + length(obj.cdr)
+    if isinstance(obj, tuple):
+        return len(obj)
+    if isinstance(obj, list):
+        return len(obj)
+    return 1 + length(cdr(obj))
+
+
 @dataclass(frozen=True)
 class Pair:
     car: object
@@ -164,6 +176,9 @@ def is_environment(obj):
     return True
 
 
+THE_EMPTY_ENVIRONMENT = ()
+
+
 @tc_enable()
 def lookup_variable_value(variable, environment):
     raise NotImplementedError()
@@ -172,6 +187,16 @@ def lookup_variable_value(variable, environment):
 @tc_enable()
 def set_variable_value(variable, value, environment):
     raise NotImplementedError()
+
+
+@tc_enable()
+def define_variable(variable, value, environment):
+    raise NotImplementedError()
+
+
+@tc_enable()
+def extend_environment(variables, values, base_environment):
+    return {var: val for var, val in zip(variables, values)}, base_environment
 
 
 @tc_enable()
@@ -209,6 +234,43 @@ class g:
     eval = simple_generic_procedure("g:eval", 2, default_eval)
     advance = simple_generic_procedure("g:advance", 1, lambda x: x)
     apply = simple_generic_procedure("g:apply", 3, default_apply)
+
+    TOKENIZE = re.compile(r'(\(|\)|\s+|".*?")')
+
+    @staticmethod
+    def read():
+        raw_string = input()
+        tokens = g.TOKENIZE.split(raw_string)
+        tokens = [token for token in tokens if token and not (token.isspace() or token == '\n') ]
+        print(tokens)
+        return g.parse(tokens)
+
+    @staticmethod
+    def parse(tokens):
+        if tokens[0] == ')':
+            raise ValueError(f"unexpected token {tokens[0]}")
+        if tokens[0] == '(':
+            return g.parse_list(tokens)
+
+        if len(tokens) > 1:
+            raise ValueError("extra tokens")
+
+        if tokens[0].startswith('"') and tokens[0].endswith('"'):
+            return tokens[0][1:-1]
+
+        try:
+            return int(tokens[0])
+        except ValueError:
+            pass
+
+        try:
+            return float(tokens[0])
+        except ValueError:
+            pass
+
+        return symbol(tokens[0])
+
+    def parse_list(self, tokens):
 
 
 @tc_enable(simple=True)
@@ -324,7 +386,9 @@ def sequence_begin(seq):
         return seq
     if is_null(cdr(seq)):
         return car.tailcall(seq)
-    actions = map(lambda exp: begin_actions(exp) if is_begin(exp) else (exp,), seq)
+    actions = tuple(
+        map(lambda exp: begin_actions(exp) if is_begin(exp) else (exp,), seq)
+    )
     return make_begin.tailcall(tuple(item for sublist in actions for item in sublist))
 
 
@@ -475,12 +539,12 @@ def is_let(exp):
 
 @tc_enable(simple=True)
 def let_bound_variables(let_exp):
-    return list(map(car, cadr(let_exp)))
+    return tuple(map(car, cadr(let_exp)))
 
 
 @tc_enable(simple=True)
 def let_bound_values(let_exp):
-    return list(map(cadr, cadr(let_exp)))
+    return tuple(map(cadr, cadr(let_exp)))
 
 
 @tc_enable()
@@ -559,12 +623,110 @@ define_generic_procedure_handler(
     ),
 )
 
+# apply handlers
+
+fntype = type(lambda: 0)
+
+
+@tc_enable(simple=True)
+def is_strict_primitive_procedure(obj):
+    return isinstance(obj, fntype)
+
+
+@tc_enable()
+def is_operands(obj):
+    return is_null(obj) or is_pair(obj)
+
+
+def eval_operands(operands, calling_environment):
+    return tuple(
+        lambda operand: g.advance(g.eval(operand, calling_environment))
+        for operand in operands
+    )
+
+
+@tc_enable()
+def apply_primitive_procedure(procedure, operands):
+    return tail_call(procedure, *operands)
+
+
+define_generic_procedure_handler(
+    g.apply,
+    match_args(is_strict_primitive_procedure, is_operands, is_environment),
+    lambda procedure, operands, calling_environment: apply_primitive_procedure(
+        procedure, eval_operands(calling_environment)
+    ),
+)
+
+
+@tc_enable(simple=True)
+def is_strict_compound_procedure(obj):
+    return is_compound_procedure(obj) and all(map(is_symbol, procedure_parameters))
+
+
+def apply_strict_compound_procedure(procedure, operands, calling_environment):
+    if length(procedure_parameters(procedure)) != length(operands):
+        raise TypeError("Wrong number of arguments supplied")
+    return g.eval.tailcall(
+        procedure_body(procedure),
+        extend_environment(
+            procedure_parameters(procedure),
+            eval_operands(operands, calling_environment),
+            procedure_environment(procedure),
+        ),
+    )
+
+
+define_generic_procedure_handler(
+    g.apply,
+    match_args(is_strict_compound_procedure, is_operands, is_environment),
+    apply_strict_compound_procedure,
+)
 
 ##
 
 g.eval = TcEnable(g.eval)
 g.advance = TcEnable(g.advance)
 g.apply = TcEnable(g.apply)
+
+##
+
+
+def init():
+    initialize_repl()
+    repl()
+
+
+@tc_enable()
+def repl():
+    check_repl_initialized()
+    input = g.read()
+    print(g.eval(input, THE_GLOBAL_ENVIRONMENT))
+    repl.tailcall()
+
+
+THE_GLOBAL_ENVIRONMENT = "not initialized"
+
+
+def initialize_repl():
+    global THE_GLOBAL_ENVIRONMENT
+    THE_GLOBAL_ENVIRONMENT = make_global_environment()
+
+
+def check_repl_initialized():
+    if THE_GLOBAL_ENVIRONMENT == "not initialized":
+        raise RuntimeError("Interpreter not initialized. Run init() first.")
+
+
+def make_global_environment():
+    return extend_environment(
+        map(car, INITIAL_ENV_BINDINGS),
+        map(cdr, INITIAL_ENV_BINDINGS),
+        THE_EMPTY_ENVIRONMENT,
+    )
+
+
+INITIAL_ENV_BINDINGS = ()
 
 ##
 
@@ -585,3 +747,5 @@ begin = Symbol("begin")
 
 # print(g.eval(((Symbol('lambda'), (x,), x), 42), ()))
 print(g.eval((begin, 1, 2, 3), ()))
+
+init()
