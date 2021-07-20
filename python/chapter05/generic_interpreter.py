@@ -12,6 +12,7 @@ class TcEnable:
     """
 
     def __init__(self, func, simple=False):
+        self.raw_func = func
         if simple:
             self.func = func
         else:
@@ -21,7 +22,7 @@ class TcEnable:
         return self.func(*args, **kwargs)
 
     def tailcall(self, *args, **kwargs):
-        raise TailCall(self.func, args, kwargs)
+        raise TailCall(self.raw_func, args, kwargs)
 
 
 def tail_call(func, *args, **kwargs):
@@ -53,6 +54,7 @@ def wrap_trampoline(function):
     return trampoline
 
 
+@tc_enable(simple=True)
 def boolean(obj):
     return obj is not False
 
@@ -133,6 +135,11 @@ def caddr(obj):
 
 
 @tc_enable()
+def cdadr(obj):
+    return cdr.tailcall(car(cdr(obj)))
+
+
+@tc_enable()
 def cdddr(obj):
     return cdr.tailcall(cdr(cdr(obj)))
 
@@ -158,25 +165,32 @@ def lookup_variable_value(variable, environment):
 
 
 @tc_enable()
+def set_variable_value(variable, value, environment):
+    raise NotImplementedError()
+
+
+@tc_enable()
 def default_eval(expression, environment):
     if is_application(expression):
-        tail_call(g.apply,
-                  g.advance(g.eval(operator(expression),
-                                   environment)),
-                  operands(expression),
-                  environment)
+        g.apply.tail_call(
+            g.advance(g.eval(operator(expression),
+                             environment)),
+            operands(expression),
+            environment)
     else:
         raise TypeError(f"Unknown expression type {expression}")
 
 
-@tc_enable(simple=False)
-def is_application(exp): return is_pair(exp)
+@tc_enable()
+def is_application(exp): return is_pair.tailcall(exp)
 
 
-def operator(exp): return car(exp)
+@tc_enable()
+def operator(exp): return car.tailcall(exp)
 
 
-def operands(exp): return cdr(exp)
+@tc_enable()
+def operands(exp): return cdr.tailcall(exp)
 
 
 def default_apply(procedure, _operands, _calling_environment):
@@ -189,14 +203,17 @@ class g:
     apply = simple_generic_procedure("g:apply", 3, default_apply)
 
 
+@tc_enable(simple=True)
 def is_number(obj):
     return isinstance(obj, int) or isinstance(obj, float)
 
 
+@tc_enable(simple=True)
 def is_boolean(obj):
     return isinstance(obj, bool)
 
 
+@tc_enable(simple=True)
 def is_string(obj):
     return isinstance(obj, str)
 
@@ -206,18 +223,21 @@ define_generic_procedure_handler(g.eval, match_args(is_boolean, is_environment),
 define_generic_procedure_handler(g.eval, match_args(is_string, is_environment), lambda expr, env: expr)
 
 
+@tc_enable(simple=True)
 def is_quoted(exp):
     return is_tagged_list(exp, symbol('quote'))
 
 
+@tc_enable()
 def text_of_quotation(quot):
-    return cadr(quot)
+    return cadr.tailcall(quot)
 
 
 define_generic_procedure_handler(g.eval, match_args(is_quoted, is_environment),
                                  lambda expr, env: text_of_quotation(expr))
 
 
+@tc_enable(simple=True)
 def is_variable(exp):
     return is_symbol(exp)
 
@@ -225,53 +245,62 @@ def is_variable(exp):
 define_generic_procedure_handler(g.eval, match_args(is_variable, is_environment), lookup_variable_value)
 
 
+@tc_enable(simple=True)
 def is_if(exp):
     return is_tagged_list(exp, Symbol('if'))
 
 
-def if_predicate(exp): return cadr(exp)
+@tc_enable()
+def if_predicate(exp): return cadr.tailcall(exp)
 
 
-def if_consequent(exp): return caddr(exp)
+@tc_enable()
+def if_consequent(exp): return caddr.tailcall(exp)
 
 
+@tc_enable()
 def if_alternative(exp):
     if is_null(cdddr(exp)):
         return Symbol('the-unspecified-value')
     else:
-        return cadddr(exp)
+        return cadddr.tailcall(exp)
 
 
+@tc_enable(simple=True)
 def make_if(pred, conseq, alternative):
     return Symbol('if'), pred, conseq, alternative
 
 
 define_generic_procedure_handler(g.eval, match_args(is_if, is_environment),
                                  lambda expression, environment: (
-                                     g.eval(if_consequent(expression), environment)
+                                     g.eval.tailcall(if_consequent(expression), environment)
                                      if boolean(g.advance(g.eval(if_predicate(expression), environment)))
-                                     else g.eval(if_alternative(expression), environment)))
+                                     else g.eval.tailcall(if_alternative(expression), environment)))
 
 
+@tc_enable(simple=True)
 def is_begin(exp):
     return is_tagged_list(exp, Symbol('begin'))
 
 
+@tc_enable()
 def begin_actions(begin_exp):
-    return cdr(begin_exp)
+    return cdr.tailcall(begin_exp)
 
 
+@tc_enable()
 def make_begin(actions):
-    return cons(Symbol('begin'), actions)
+    return cons.tailcall(Symbol('begin'), actions)
 
 
+@tc_enable()
 def sequence_begin(seq):
     if is_null(seq):
         return seq
     if is_null(cdr(seq)):
-        return car(seq)
+        return car.tailcall(seq)
     actions = map(lambda exp: begin_actions(exp) if is_begin(exp) else (exp,), seq)
-    return make_begin(tuple(item for sublist in actions for item in sublist))
+    return make_begin.tailcall(tuple(item for sublist in actions for item in sublist))
 
 
 @tc_enable()
@@ -279,33 +308,37 @@ def evaluate_sequence(actions, environment):
     if is_null(actions):
         raise SyntaxError("Empty sequence")
     if is_null(cdr(actions)):
-        return g.eval(car(actions), environment)
+        return g.eval.tailcall(car(actions), environment)
     g.eval(car(actions), environment)
     return evaluate_sequence.tailcall(cdr(actions), environment)
 
 
 define_generic_procedure_handler(g.eval, match_args(is_begin, is_environment),
                                  lambda expression, environment: (
-                                     evaluate_sequence(begin_actions(expression), environment)))
+                                     evaluate_sequence.tailcall(begin_actions(expression), environment)))
 
 
+@tc_enable(simple=True)
 def is_lambda(exp):
     return is_tagged_list(exp, Symbol('lambda'))
 
 
+@tc_enable()
 def lambda_parameters(lambda_exp):
-    return cadr(lambda_exp)
+    return cadr.tailcall(lambda_exp)
 
 
+@tc_enable()
 def lambda_body(lambda_exp):
     full_body = cddr(lambda_exp)
-    return sequence_begin(full_body)
+    return sequence_begin.tailcall(full_body)
 
 
+@tc_enable(simple=True)
 def make_lambda(parameters, body):
-    return cons(Symbol('lambda'),
-                cons(parameters,
-                     begin_actions(body) if is_begin(body) else (body,)))
+    return cons.tailcall(Symbol('lambda'),
+                         cons(parameters,
+                              begin_actions(body) if is_begin(body) else (body,)))
 
 
 class CompoundProcedure:
@@ -315,96 +348,164 @@ class CompoundProcedure:
         self.env = env
 
 
+@tc_enable(simple=True)
 def is_compound_procedure(obj):
     return isinstance(obj, CompoundProcedure)
 
 
+@tc_enable(simple=True)
 def make_compound_procedure(vars, bproc, env):
     return CompoundProcedure(vars, bproc, env)
 
 
+@tc_enable(simple=True)
 def procedure_parameters(cproc):
     return cproc.vars
 
 
+@tc_enable(simple=True)
 def procedure_body(cproc):
     return cproc.bproc
 
 
+@tc_enable(simple=True)
 def procedure_environment(cproc):
     return cproc.env
 
 
 define_generic_procedure_handler(g.eval, match_args(is_lambda, is_environment),
                                  lambda expression, environment: (
-                                     make_compound_procedure(lambda_parameters(expression),
-                                                             lambda_body(expression),
-                                                             environment)))
+                                     make_compound_procedure.tailcall(lambda_parameters(expression),
+                                                                      lambda_body(expression),
+                                                                      environment)))
 
 
+@tc_enable(simple=True)
 def is_cond(exp):
     return is_tagged_list(exp, Symbol('cond'))
 
 
+@tc_enable(simple=True)
 def cond_clauses(exp): return cdr(exp)
 
 
+@tc_enable(simple=True)
 def cond_clause_predicate(clause): return car(clause)
 
 
-def cond_clause_consequent(clause): return sequence_begin(cdr(clause))
+@tc_enable()
+def cond_clause_consequent(clause): return sequence_begin.tailcall(cdr(clause))
 
 
+@tc_enable(simple=True)
 def is_else_clause(clause): return cond_clause_predicate(clause) == Symbol('else')
 
 
+@tc_enable()
 def cond_to_if(cond_exp):
+    @tc_enable()
     def expand(clauses):
         if is_null(clauses):
             raise ValueError("COND: no values matched")
         if is_else_clause(car(clauses)):
             if is_null(cdr(clauses)):
-                return cond_clause_consequent(car(clauses))
+                return cond_clause_consequent.tailcall(car(clauses))
             else:
                 raise SyntaxError(f"COND: ELSE not last {cond_exp}")
-        return make_if(cond_clause_predicate(car(clauses)),
-                       cond_clause_consequent(car(clauses)),
-                       expand(cdr(clauses)))
+        return make_if.tailcall(cond_clause_predicate(car(clauses)),
+                                cond_clause_consequent(car(clauses)),
+                                expand(cdr(clauses)))
 
-    return expand(cond_clauses(cond_exp))
+    return expand.tailcall(cond_clauses(cond_exp))
 
 
 define_generic_procedure_handler(g.eval, match_args(is_cond, is_environment),
                                  lambda expression, environment: (
-                                     g.eval(cond_to_if(expression), environment)))
+                                     g.eval.tailcall(cond_to_if(expression), environment)))
 
 
+@tc_enable(simple=True)
 def is_let(exp):
     return is_tagged_list(exp, Symbol('let'))
 
 
+@tc_enable(simple=True)
 def let_bound_variables(let_exp):
     return list(map(car, cadr(let_exp)))
 
 
+@tc_enable(simple=True)
 def let_bound_values(let_exp):
     return list(map(cadr, cadr(let_exp)))
 
 
+@tc_enable()
 def let_body(let_exp):
-    return sequence_begin(cddr(let_exp))
+    return sequence_begin.tailcall(cddr(let_exp))
 
 
+@tc_enable()
 def let_to_combination(let_exp):
     names = let_bound_variables(let_exp)
     values = let_bound_values(let_exp)
     body = let_body(let_exp)
-    return cons(make_lambda(names, body), values)
+    return cons.tailcall(make_lambda(names, body), values)
 
 
 define_generic_procedure_handler(g.eval, match_args(is_let, is_environment),
                                  lambda expression, environment: (
-                                     g.eval(let_to_combination(expression), environment)))
+                                     g.eval.tailcall(let_to_combination(expression), environment)))
+
+
+@tc_enable(simple=True)
+def is_assignment(exp):
+    return is_tagged_list(exp, Symbol('set!'))
+
+
+assignment_variable = cadr
+assignment_value = caddr
+
+define_generic_procedure_handler(g.eval, match_args(is_assignment, is_environment),
+                                 lambda expression, environment: (
+                                     set_variable_value.tailcall(assignment_variable(expression),
+                                                                 g.eval(assignment_value(expression)),
+                                                                 environment)))
+
+
+@tc_enable(simple=True)
+def is_definition(exp):
+    return is_tagged_list(exp, Symbol('define'))
+
+
+def definition_variable(defn):
+    if is_variable(cadr(defn)):
+        return cadr(defn)
+    else:
+        return caadr(defn)
+
+def definition_value(defn):
+    if is_variable(cadr(defn)):
+        return caddr(defn)
+    else:
+        return cons(symbol('lambda'),
+                    cons(cdadr(defn), cddr(defn)))
+
+assignment_value = caddr
+
+define_generic_procedure_handler(g.eval, match_args(is_definition, is_environment),
+                                 lambda expression, environment: (
+                                     define_variable.tailcall(definition_variable(expression),
+                                                              g.eval(definition_value(expression)),
+                                                              environment)))
+
+
+##
+
+g.eval = TcEnable(g.eval)
+g.advance = TcEnable(g.advance)
+g.apply = TcEnable(g.apply)
+
+##
 
 a = Symbol('a')
 b = Symbol('b')
