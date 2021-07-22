@@ -200,7 +200,13 @@ def lookup_variable_value(variable, environment):
 
 @tc_enable()
 def set_variable_value(variable, value, environment):
-    raise NotImplementedError()
+    if not environment:
+        return None
+    current, parent = environment
+    if variable in current:
+        current[variable] = value
+    else:
+        set_variable_value(variable, value, parent)
 
 
 @tc_enable()
@@ -624,7 +630,7 @@ define_generic_procedure_handler(
     lambda expression, environment: (
         set_variable_value.tailcall(
             assignment_variable(expression),
-            g.eval(assignment_value(expression)),
+            g.eval(assignment_value(expression), environment),
             environment,
         )
     ),
@@ -694,7 +700,7 @@ define_generic_procedure_handler(
     g.apply,
     match_args(is_strict_primitive_procedure, is_operands, is_environment),
     lambda procedure, operands, calling_environment: apply_primitive_procedure(
-        procedure, eval_operands(calling_environment)
+        procedure, eval_operands(operands, calling_environment)
     ),
 )
 
