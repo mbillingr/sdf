@@ -74,6 +74,9 @@ class Symbol:
     def __repr__(self):
         return self.name
 
+    def __hash__(self):
+        return hash((Symbol, self.name))
+
 
 @tc_enable(simple=True)
 def symbol(name):
@@ -185,7 +188,14 @@ THE_EMPTY_ENVIRONMENT = ()
 
 @tc_enable()
 def lookup_variable_value(variable, environment):
-    raise NotImplementedError()
+    if not environment:
+        return None
+    current, parent = environment
+    try:
+        return current[variable]
+    except KeyError:
+        pass
+    return lookup_variable_value(variable, parent)
 
 
 @tc_enable()
@@ -195,7 +205,8 @@ def set_variable_value(variable, value, environment):
 
 @tc_enable()
 def define_variable(variable, value, environment):
-    raise NotImplementedError()
+    current, parent = environment
+    current[variable] = value
 
 
 @tc_enable()
@@ -647,7 +658,7 @@ define_generic_procedure_handler(
     lambda expression, environment: (
         define_variable.tailcall(
             definition_variable(expression),
-            g.eval(definition_value(expression)),
+            g.eval(definition_value(expression), environment),
             environment,
         )
     ),
@@ -670,8 +681,7 @@ def is_operands(obj):
 
 def eval_operands(operands, calling_environment):
     return tuple(
-        lambda operand: g.advance(g.eval(operand, calling_environment))
-        for operand in operands
+        g.advance(g.eval(operand, calling_environment)) for operand in operands
     )
 
 
@@ -691,7 +701,7 @@ define_generic_procedure_handler(
 
 @tc_enable(simple=True)
 def is_strict_compound_procedure(obj):
-    return is_compound_procedure(obj) and all(map(is_symbol, procedure_parameters))
+    return is_compound_procedure(obj) and all(map(is_symbol, procedure_parameters(obj)))
 
 
 def apply_strict_compound_procedure(procedure, operands, calling_environment):
