@@ -1,6 +1,5 @@
-import string
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 from chapter03.generic_procedures import (
     simple_generic_procedure,
@@ -246,7 +245,11 @@ class g:
     def read():
         raw_string = input()
         tokens = g.TOKENIZE.split(raw_string)
-        tokens = [token for token in tokens if token and not (token.isspace() or token == '\n')]
+        tokens = [
+            token
+            for token in tokens
+            if token and not (token.isspace() or token == "\n")
+        ]
         yield from Parser(tokens).parse()
 
 
@@ -269,9 +272,9 @@ class Parser:
     def parse_item(self):
         token = self.current_token
 
-        if token == ')':
+        if token == ")":
             raise ValueError(f"unexpected token {token}")
-        if token == '(':
+        if token == "(":
             return tuple(self.parse_list())
 
         if token.startswith('"') and token.endswith('"'):
@@ -290,7 +293,7 @@ class Parser:
         return symbol(token)
 
     def parse_list(self):
-        end_delimiter = {'(': ')', '[': ']', '{': '}', '<': '>'}[self.current_token]
+        end_delimiter = {"(": ")", "[": "]", "{": "}", "<": ">"}[self.current_token]
         self.advance()
         items = []
         while True:
@@ -716,6 +719,7 @@ g.eval = TcEnable(g.eval)
 g.advance = TcEnable(g.advance)
 g.apply = TcEnable(g.apply)
 
+
 ##
 
 
@@ -728,7 +732,7 @@ def init():
 def repl():
     check_repl_initialized()
     ans = "no result"
-    print("> ", end='')
+    print("> ", end="")
     for input in g.read():
         ans = g.eval(input, THE_GLOBAL_ENVIRONMENT)
     print(ans)
