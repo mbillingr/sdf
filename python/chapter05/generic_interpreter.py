@@ -741,6 +741,7 @@ g.apply = TcEnable(g.apply)
 
 def init():
     initialize_repl()
+    print(THE_GLOBAL_ENVIRONMENT)
     repl()
 
 
@@ -771,12 +772,22 @@ def check_repl_initialized():
 def make_global_environment():
     return extend_environment(
         map(car, INITIAL_ENV_BINDINGS),
-        map(cdr, INITIAL_ENV_BINDINGS),
+        map(cadr, INITIAL_ENV_BINDINGS),
         THE_EMPTY_ENVIRONMENT,
     )
 
 
-INITIAL_ENV_BINDINGS = ()
+INITIAL_ENV_BINDINGS = (
+    (Symbol("+"), lambda a, b: a + b),
+    (Symbol("-"), lambda a, b: a - b),
+    (Symbol("*"), lambda a, b: a * b),
+    (Symbol("/"), lambda a, b: a / b),
+    (Symbol("="), lambda a, b: a == b),
+    (Symbol("<"), lambda a, b: a < b),
+    (Symbol(">"), lambda a, b: a > b),
+    (Symbol("<="), lambda a, b: a <= b),
+    (Symbol(">="), lambda a, b: a >= b),
+)
 
 ##
 
