@@ -147,6 +147,11 @@ def cddr(obj):
 
 
 @tc_enable()
+def caadr(obj):
+    return car.tailcall(car(cdr(obj)))
+
+
+@tc_enable()
 def caddr(obj):
     return car.tailcall(cdr(cdr(obj)))
 
@@ -202,7 +207,7 @@ def extend_environment(variables, values, base_environment):
 @tc_enable()
 def default_eval(expression, environment):
     if is_application(expression):
-        g.apply.tail_call(
+        g.apply.tailcall(
             g.advance(g.eval(operator(expression), environment)),
             operands(expression),
             environment,
@@ -241,36 +246,58 @@ class g:
     def read():
         raw_string = input()
         tokens = g.TOKENIZE.split(raw_string)
-        tokens = [token for token in tokens if token and not (token.isspace() or token == '\n') ]
-        print(tokens)
-        return g.parse(tokens)
+        tokens = [token for token in tokens if token and not (token.isspace() or token == '\n')]
+        yield from Parser(tokens).parse()
 
-    @staticmethod
-    def parse(tokens):
-        if tokens[0] == ')':
-            raise ValueError(f"unexpected token {tokens[0]}")
-        if tokens[0] == '(':
-            return g.parse_list(tokens)
 
-        if len(tokens) > 1:
-            raise ValueError("extra tokens")
+class Parser:
+    def __init__(self, tokens):
+        self.tokens = iter(tokens)
+        self.current_token = next(self.tokens)
 
-        if tokens[0].startswith('"') and tokens[0].endswith('"'):
-            return tokens[0][1:-1]
+    def advance(self):
+        self.current_token = next(self.tokens)
+
+    def parse(self):
+        while True:
+            yield self.parse_item()
+            try:
+                self.advance()
+            except StopIteration:
+                return
+
+    def parse_item(self):
+        token = self.current_token
+
+        if token == ')':
+            raise ValueError(f"unexpected token {token}")
+        if token == '(':
+            return tuple(self.parse_list())
+
+        if token.startswith('"') and token.endswith('"'):
+            return token[1:-1]
 
         try:
-            return int(tokens[0])
+            return int(token)
         except ValueError:
             pass
 
         try:
-            return float(tokens[0])
+            return float(token)
         except ValueError:
             pass
 
-        return symbol(tokens[0])
+        return symbol(token)
 
-    def parse_list(self, tokens):
+    def parse_list(self):
+        end_delimiter = {'(': ')', '[': ']', '{': '}', '<': '>'}[self.current_token]
+        self.advance()
+        items = []
+        while True:
+            if self.current_token == end_delimiter:
+                return items
+            items.append(self.parse_item())
+            self.advance()
 
 
 @tc_enable(simple=True)
@@ -700,8 +727,11 @@ def init():
 @tc_enable()
 def repl():
     check_repl_initialized()
-    input = g.read()
-    print(g.eval(input, THE_GLOBAL_ENVIRONMENT))
+    ans = "no result"
+    print("> ", end='')
+    for input in g.read():
+        ans = g.eval(input, THE_GLOBAL_ENVIRONMENT)
+    print(ans)
     repl.tailcall()
 
 
