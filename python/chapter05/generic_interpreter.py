@@ -256,7 +256,7 @@ class g:
     advance = simple_generic_procedure("g:advance", 1, lambda x: x)
     apply = simple_generic_procedure("g:apply", 3, default_apply)
 
-    TOKENIZE = re.compile(r'(\(|\)|\s+|".*?")')
+    TOKENIZE = re.compile(r'(\'|\(|\)|\s+|".*?")')
 
     @staticmethod
     def read():
@@ -293,6 +293,10 @@ class Parser:
             raise ValueError(f"unexpected token {token}")
         if token == "(":
             return tuple(self.parse_list())
+
+        if token == "'":
+            self.advance()
+            return Symbol("quote"), self.parse_item()
 
         if token.startswith('"') and token.endswith('"'):
             return token[1:-1]
@@ -405,9 +409,9 @@ define_generic_procedure_handler(
     g.eval,
     match_args(is_if, is_environment),
     lambda expression, environment: (
-        g.eval.tailcall(if_consequent(expression), environment)
+        g.eval(if_consequent(expression), environment)
         if boolean(g.advance(g.eval(if_predicate(expression), environment)))
-        else g.eval.tailcall(if_alternative(expression), environment)
+        else g.eval(if_alternative(expression), environment)
     ),
 )
 
@@ -444,7 +448,7 @@ def evaluate_sequence(actions, environment):
     if is_null(actions):
         raise SyntaxError("Empty sequence")
     if is_null(cdr(actions)):
-        return g.eval.tailcall(car(actions), environment)
+        return g.eval(car(actions), environment)
     g.eval(car(actions), environment)
     return evaluate_sequence.tailcall(cdr(actions), environment)
 
@@ -574,7 +578,7 @@ define_generic_procedure_handler(
     g.eval,
     match_args(is_cond, is_environment),
     lambda expression, environment: (
-        g.eval.tailcall(cond_to_if(expression), environment)
+        g.eval(cond_to_if(expression), environment)
     ),
 )
 
@@ -611,7 +615,7 @@ define_generic_procedure_handler(
     g.eval,
     match_args(is_let, is_environment),
     lambda expression, environment: (
-        g.eval.tailcall(let_to_combination(expression), environment)
+        g.eval(let_to_combination(expression), environment)
     ),
 )
 
@@ -713,7 +717,7 @@ def is_strict_compound_procedure(obj):
 def apply_strict_compound_procedure(procedure, operands, calling_environment):
     if length(procedure_parameters(procedure)) != length(operands):
         raise TypeError("Wrong number of arguments supplied")
-    return g.eval.tailcall(
+    return g.eval(
         procedure_body(procedure),
         extend_environment(
             procedure_parameters(procedure),
@@ -730,10 +734,6 @@ define_generic_procedure_handler(
 )
 
 ##
-
-g.eval = TcEnable(g.eval)
-g.advance = TcEnable(g.advance)
-g.apply = TcEnable(g.apply)
 
 
 ##
