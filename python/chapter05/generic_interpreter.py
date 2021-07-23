@@ -252,9 +252,24 @@ def default_apply(procedure, _operands, _calling_environment):
 
 
 class g:
-    eval = simple_generic_procedure("g:eval", 2, default_eval)
-    advance = simple_generic_procedure("g:advance", 1, lambda x: x)
-    apply = simple_generic_procedure("g:apply", 3, default_apply)
+    raw_eval = simple_generic_procedure("g:eval", 2, default_eval)
+    raw_advance = simple_generic_procedure("g:advance", 1, lambda x: x)
+    raw_apply = simple_generic_procedure("g:apply", 3, default_apply)
+    eval = tc_enable()(raw_eval)
+    advance = tc_enable()(raw_advance)
+    apply = tc_enable()(raw_apply)
+
+    @staticmethod
+    def define_eval_handler(applicability, handler):
+        define_generic_procedure_handler(g.raw_eval, applicability, handler)
+
+    @staticmethod
+    def define_advance_handler(applicability, handler):
+        define_generic_procedure_handler(g.raw_advance, applicability, handler)
+
+    @staticmethod
+    def define_apply_handler(applicability, handler):
+        define_generic_procedure_handler(g.raw_apply, applicability, handler)
 
     TOKENIZE = re.compile(r'(\'|\(|\)|\s+|".*?")')
 
@@ -339,15 +354,9 @@ def is_string(obj):
     return isinstance(obj, str)
 
 
-define_generic_procedure_handler(
-    g.eval, match_args(is_number, is_environment), lambda expr, env: expr
-)
-define_generic_procedure_handler(
-    g.eval, match_args(is_boolean, is_environment), lambda expr, env: expr
-)
-define_generic_procedure_handler(
-    g.eval, match_args(is_string, is_environment), lambda expr, env: expr
-)
+g.define_eval_handler(match_args(is_number, is_environment), lambda expr, env: expr)
+g.define_eval_handler(match_args(is_boolean, is_environment), lambda expr, env: expr)
+g.define_eval_handler(match_args(is_string, is_environment), lambda expr, env: expr)
 
 
 @tc_enable(simple=True)
@@ -360,8 +369,7 @@ def text_of_quotation(quot):
     return cadr.tailcall(quot)
 
 
-define_generic_procedure_handler(
-    g.eval,
+g.define_eval_handler(
     match_args(is_quoted, is_environment),
     lambda expr, env: text_of_quotation(expr),
 )
@@ -372,9 +380,7 @@ def is_variable(exp):
     return is_symbol(exp)
 
 
-define_generic_procedure_handler(
-    g.eval, match_args(is_variable, is_environment), lookup_variable_value
-)
+g.define_eval_handler(match_args(is_variable, is_environment), lookup_variable_value)
 
 
 @tc_enable(simple=True)
@@ -405,13 +411,12 @@ def make_if(pred, conseq, alternative):
     return Symbol("if"), pred, conseq, alternative
 
 
-define_generic_procedure_handler(
-    g.eval,
+g.define_eval_handler(
     match_args(is_if, is_environment),
     lambda expression, environment: (
-        g.eval(if_consequent(expression), environment)
+        g.eval.tailcall(if_consequent(expression), environment)
         if boolean(g.advance(g.eval(if_predicate(expression), environment)))
-        else g.eval(if_alternative(expression), environment)
+        else g.eval.tailcall(if_alternative(expression), environment)
     ),
 )
 
@@ -448,13 +453,12 @@ def evaluate_sequence(actions, environment):
     if is_null(actions):
         raise SyntaxError("Empty sequence")
     if is_null(cdr(actions)):
-        return g.eval(car(actions), environment)
+        return g.eval.tailcall(car(actions), environment)
     g.eval(car(actions), environment)
     return evaluate_sequence.tailcall(cdr(actions), environment)
 
 
-define_generic_procedure_handler(
-    g.eval,
+g.define_eval_handler(
     match_args(is_begin, is_environment),
     lambda expression, environment: (
         evaluate_sequence.tailcall(begin_actions(expression), environment)
@@ -518,8 +522,7 @@ def procedure_environment(cproc):
     return cproc.env
 
 
-define_generic_procedure_handler(
-    g.eval,
+g.define_eval_handler(
     match_args(is_lambda, is_environment),
     lambda expression, environment: (
         make_compound_procedure.tailcall(
@@ -574,12 +577,9 @@ def cond_to_if(cond_exp):
     return expand.tailcall(cond_clauses(cond_exp))
 
 
-define_generic_procedure_handler(
-    g.eval,
+g.define_eval_handler(
     match_args(is_cond, is_environment),
-    lambda expression, environment: (
-        g.eval(cond_to_if(expression), environment)
-    ),
+    lambda expression, environment: (g.eval.tailcall(cond_to_if(expression), environment)),
 )
 
 
@@ -611,11 +611,10 @@ def let_to_combination(let_exp):
     return cons.tailcall(make_lambda(names, body), values)
 
 
-define_generic_procedure_handler(
-    g.eval,
+g.define_eval_handler(
     match_args(is_let, is_environment),
     lambda expression, environment: (
-        g.eval(let_to_combination(expression), environment)
+        g.eval.tailcall(let_to_combination(expression), environment)
     ),
 )
 
@@ -628,8 +627,7 @@ def is_assignment(exp):
 assignment_variable = cadr
 assignment_value = caddr
 
-define_generic_procedure_handler(
-    g.eval,
+g.define_eval_handler(
     match_args(is_assignment, is_environment),
     lambda expression, environment: (
         set_variable_value.tailcall(
@@ -662,8 +660,7 @@ def definition_value(defn):
 
 assignment_value = caddr
 
-define_generic_procedure_handler(
-    g.eval,
+g.define_eval_handler(
     match_args(is_definition, is_environment),
     lambda expression, environment: (
         define_variable.tailcall(
@@ -700,8 +697,7 @@ def apply_primitive_procedure(procedure, operands):
     return tail_call(procedure, *operands)
 
 
-define_generic_procedure_handler(
-    g.apply,
+g.define_apply_handler(
     match_args(is_strict_primitive_procedure, is_operands, is_environment),
     lambda procedure, operands, calling_environment: apply_primitive_procedure(
         procedure, eval_operands(operands, calling_environment)
@@ -717,7 +713,7 @@ def is_strict_compound_procedure(obj):
 def apply_strict_compound_procedure(procedure, operands, calling_environment):
     if length(procedure_parameters(procedure)) != length(operands):
         raise TypeError("Wrong number of arguments supplied")
-    return g.eval(
+    return g.eval.tailcall(
         procedure_body(procedure),
         extend_environment(
             procedure_parameters(procedure),
@@ -727,8 +723,7 @@ def apply_strict_compound_procedure(procedure, operands, calling_environment):
     )
 
 
-define_generic_procedure_handler(
-    g.apply,
+g.define_apply_handler(
     match_args(is_strict_compound_procedure, is_operands, is_environment),
     apply_strict_compound_procedure,
 )
@@ -791,7 +786,7 @@ INITIAL_ENV_BINDINGS = (
 
 ##
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     a = Symbol("a")
     b = Symbol("b")
     c = Symbol("c")
