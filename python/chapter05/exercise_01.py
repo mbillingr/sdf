@@ -7,9 +7,12 @@ from chapter03.generic_procedures import (
 
 from generic_interpreter import (
     INITIAL_ENV_BINDINGS,
+    cons,
+    eval_operands,
     g,
     init,
     is_environment,
+    is_operands,
     is_pair,
     is_symbol,
     is_variable,
@@ -52,6 +55,13 @@ define_generic_procedure_handler(
 )
 define_generic_procedure_handler(
     div, any_arg(2, is_symbolic, is_any), lambda a, b: (symbol("/"), a, b)
+)
+
+g.define_apply_handler(
+    match_args(is_symbol, is_operands, is_environment),
+    lambda proc, operands, calling_environment: cons(
+        proc, eval_operands(operands, calling_environment)
+    ),
 )
 
 if __name__ == "__main__":
