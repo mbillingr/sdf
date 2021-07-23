@@ -791,22 +791,23 @@ INITIAL_ENV_BINDINGS = (
 
 ##
 
-a = Symbol("a")
-b = Symbol("b")
-c = Symbol("c")
+if __name__ == '__main__':
+    a = Symbol("a")
+    b = Symbol("b")
+    c = Symbol("c")
 
-print((a, b, c))
+    print((a, b, c))
 
-print(car((1, 2, 3)), cdr((1, 2, 3)))
-x = cons(1, (2, 3, 4))
-print(x)
-print(car(x), cdr(x), cdr(cdr(x)))
+    print(car((1, 2, 3)), cdr((1, 2, 3)))
+    x = cons(1, (2, 3, 4))
+    print(x)
+    print(car(x), cdr(x), cdr(cdr(x)))
 
-quote = Symbol("quote")
-x = Symbol("x")
-begin = Symbol("begin")
+    quote = Symbol("quote")
+    x = Symbol("x")
+    begin = Symbol("begin")
 
-# print(g.eval(((Symbol('lambda'), (x,), x), 42), ()))
-print(g.eval((begin, 1, 2, 3), ()))
+    # print(g.eval(((Symbol('lambda'), (x,), x), 42), ()))
+    print(g.eval((begin, 1, 2, 3), ()))
 
-init()
+    init()
