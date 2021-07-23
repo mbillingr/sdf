@@ -579,7 +579,9 @@ def cond_to_if(cond_exp):
 
 g.define_eval_handler(
     match_args(is_cond, is_environment),
-    lambda expression, environment: (g.eval.tailcall(cond_to_if(expression), environment)),
+    lambda expression, environment: (
+        g.eval.tailcall(cond_to_if(expression), environment)
+    ),
 )
 
 
@@ -766,23 +768,23 @@ def check_repl_initialized():
 
 def make_global_environment():
     return extend_environment(
-        map(car, INITIAL_ENV_BINDINGS),
-        map(cadr, INITIAL_ENV_BINDINGS),
+        map(car, INITIAL_ENV_BINDINGS.items()),
+        map(cadr, INITIAL_ENV_BINDINGS.items()),
         THE_EMPTY_ENVIRONMENT,
     )
 
 
-INITIAL_ENV_BINDINGS = (
-    (Symbol("+"), lambda a, b: a + b),
-    (Symbol("-"), lambda a, b: a - b),
-    (Symbol("*"), lambda a, b: a * b),
-    (Symbol("/"), lambda a, b: a / b),
-    (Symbol("="), lambda a, b: a == b),
-    (Symbol("<"), lambda a, b: a < b),
-    (Symbol(">"), lambda a, b: a > b),
-    (Symbol("<="), lambda a, b: a <= b),
-    (Symbol(">="), lambda a, b: a >= b),
-)
+INITIAL_ENV_BINDINGS = {
+    Symbol("+"): lambda a, b: a + b,
+    Symbol("-"): lambda a, b: a - b,
+    Symbol("*"): lambda a, b: a * b,
+    Symbol("/"): lambda a, b: a / b,
+    Symbol("="): lambda a, b: a == b,
+    Symbol("<"): lambda a, b: a < b,
+    Symbol(">"): lambda a, b: a > b,
+    Symbol("<="): lambda a, b: a <= b,
+    Symbol(">="): lambda a, b: a >= b,
+}
 
 ##
 
