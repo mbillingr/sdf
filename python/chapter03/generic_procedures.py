@@ -131,6 +131,10 @@ def match_args(*predicates):
     return [predicates]
 
 
+def is_any(_):
+    return True
+
+
 if __name__ == '__main__':
     def is_number(obj):
         PREDICATE_COUNTS[is_number] += 1
