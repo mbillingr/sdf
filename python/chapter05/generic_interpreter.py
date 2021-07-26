@@ -709,7 +709,11 @@ g.define_apply_handler(
 
 @tc_enable(simple=True)
 def is_strict_compound_procedure(obj):
-    return is_compound_procedure(obj) and all(map(is_symbol, procedure_parameters(obj)))
+    return (
+        is_compound_procedure(obj)
+        and not is_symbol(procedure_parameters(obj))
+        and all(map(is_symbol, procedure_parameters(obj)))
+    )
 
 
 def apply_strict_compound_procedure(procedure, operands, calling_environment):
@@ -728,6 +732,28 @@ def apply_strict_compound_procedure(procedure, operands, calling_environment):
 g.define_apply_handler(
     match_args(is_strict_compound_procedure, is_operands, is_environment),
     apply_strict_compound_procedure,
+)
+
+
+@tc_enable(simple=True)
+def is_vararg_compound_procedure(obj):
+    return is_compound_procedure(obj) and is_symbol(procedure_parameters(obj))
+
+
+def apply_vararg_compound_procedure(procedure, operands, calling_environment):
+    return g.eval.tailcall(
+        procedure_body(procedure),
+        extend_environment(
+            (procedure_parameters(procedure),),
+            (eval_operands(operands, calling_environment),),
+            procedure_environment(procedure),
+        ),
+    )
+
+
+g.define_apply_handler(
+    match_args(is_vararg_compound_procedure, is_operands, is_environment),
+    apply_vararg_compound_procedure,
 )
 
 ##
