@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass
+from typing import Any
 
 from chapter03.generic_procedures import (
     simple_generic_procedure,
@@ -61,7 +62,7 @@ def wrap_trampoline(function):
 
 @tc_enable(simple=True)
 def boolean(obj):
-    return obj is not False
+    return obj is not False and obj is not None
 
 
 class Symbol:
@@ -80,7 +81,16 @@ class Symbol:
 
 @tc_enable(simple=True)
 def symbol(name):
-    return Symbol(name)
+    global INTERNED_SYMBOLS
+    try:
+        return INTERNED_SYMBOLS[name]
+    except KeyError:
+        s = Symbol(name)
+        INTERNED_SYMBOLS[name] = s
+    return s
+
+
+INTERNED_SYMBOLS = {}
 
 
 @tc_enable(simple=True)
@@ -106,6 +116,15 @@ def length(obj):
     if isinstance(obj, list):
         return len(obj)
     return 1 + length(cdr(obj))
+
+
+def memq(obj, seq):
+    while True:
+        if is_null(seq):
+            return False
+        if car(seq) is obj:
+            return seq
+        seq = cdr(seq)
 
 
 @dataclass(frozen=True)
@@ -223,7 +242,7 @@ def extend_environment(variables, values, base_environment):
 @tc_enable()
 def default_eval(expression, environment):
     if is_application(expression):
-        g.apply.tailcall(
+        return g.apply.tailcall(
             g.advance(g.eval(operator(expression), environment)),
             operands(expression),
             environment,
@@ -259,6 +278,12 @@ class g:
     advance = tc_enable()(raw_advance)
     apply = tc_enable()(raw_apply)
 
+    handle_operand = simple_generic_procedure(
+        "g:handle-operand",
+        3,
+        lambda parameter, operand, environment: g.advance(g.eval(operand, environment)),
+    )
+
     @staticmethod
     def define_eval_handler(applicability, handler):
         define_generic_procedure_handler(g.raw_eval, applicability, handler)
@@ -274,8 +299,8 @@ class g:
     TOKENIZE = re.compile(r'(\'|\(|\)|\s+|".*?")')
 
     @staticmethod
-    def read():
-        raw_string = input()
+    def read(raw_string=None):
+        raw_string = input() if raw_string is None else raw_string
         tokens = g.TOKENIZE.split(raw_string)
         tokens = [
             token
@@ -675,12 +700,10 @@ g.define_eval_handler(
 
 # apply handlers
 
-fntype = type(lambda: 0)
-
 
 @tc_enable(simple=True)
 def is_strict_primitive_procedure(obj):
-    return isinstance(obj, fntype)
+    return callable(obj)
 
 
 @tc_enable()
@@ -730,6 +753,132 @@ g.define_apply_handler(
     apply_strict_compound_procedure,
 )
 
+procedure_parameter_name = simple_generic_procedure("parameter-name", 1, lambda x: x)
+
+define_generic_procedure_handler(procedure_parameter_name, match_args(is_pair), car)
+
+
+@tc_enable(simple=True)
+def is_general_compound_procedure(obj):
+    return is_compound_procedure(obj) and any(map(is_pair, procedure_parameters(obj)))
+
+
+def apply_general_compound_procedure(procedure, operands, calling_environment):
+    if length(procedure_parameters(procedure)) != length(operands):
+        raise TypeError("Wrong number of arguments supplied")
+    params = procedure_parameters(procedure)
+    body = procedure_body(procedure)
+    names = [procedure_parameter_name(p) for p in params]
+    arguments = [
+        g.handle_operand(param, operand, calling_environment)
+        for param, operand in zip(params, operands)
+    ]
+    return g.eval(
+        body, extend_environment(names, arguments, procedure_environment(procedure))
+    )
+
+
+g.define_apply_handler(
+    match_args(is_general_compound_procedure, is_operands, is_environment),
+    apply_general_compound_procedure,
+)
+
+
+def is_lazy(var_decl):
+    return (
+        is_pair(var_decl)
+        and memq(symbol("lazy"), cdr(var_decl))
+        and not memq(symbol("memo"), cdr(var_decl))
+    )
+
+
+def is_lazy_memo(var_decl):
+    return (
+        is_pair(var_decl)
+        and memq(symbol("lazy"), cdr(var_decl))
+        and memq(symbol("memo"), cdr(var_decl))
+    )
+
+
+def is_operand(_exp):
+    return True
+
+
+def is_postponed(obj):
+    return isinstance(obj, Postponed)
+
+
+@dataclass
+class Postponed:
+    expression: Any
+    environment: Any
+
+
+def postpone(expression, environment):
+    return Postponed(expression, environment)
+
+
+define_generic_procedure_handler(
+    g.handle_operand,
+    match_args(is_lazy, is_operand, is_environment),
+    lambda parameter, operand, environment: postpone(operand, environment),
+)
+
+define_generic_procedure_handler(
+    g.handle_operand,
+    match_args(is_lazy_memo, is_operand, is_environment),
+    lambda parameter, operand, environment: postpone_memo(operand, environment),
+)
+
+g.define_advance_handler(
+    match_args(is_postponed),
+    lambda object: g.advance(
+        g.eval(postponed_expression(object), postponed_environment(object))
+    ),
+)
+
+
+def is_postponed_memo(obj):
+    return isinstance(obj, PostponedMemo) and obj.value is None
+
+
+def is_advanced_memo(obj):
+    return isinstance(obj, PostponedMemo) and obj.value is not None
+
+
+def postpone_memo(expression, environment):
+    return PostponedMemo(expression, environment)
+
+
+def advanced_value(x):
+    return x.value
+
+
+@dataclass
+class PostponedMemo:
+    expression: Any
+    environment: Any
+    value: Any = None
+
+    def set_value(self, value):
+        self.value = value
+        self.expression = None
+        self.environment = THE_EMPTY_ENVIRONMENT
+
+
+def handle_postponed_memo(object):
+    value = g.advance(g.eval(object.expression, object.environment))
+    object.set_value(value)
+    return value
+
+
+g.define_advance_handler(
+    match_args(is_postponed_memo),
+    handle_postponed_memo,
+)
+
+g.define_advance_handler(match_args(is_advanced_memo), advanced_value)
+
 ##
 
 
@@ -742,16 +891,19 @@ def init():
     repl()
 
 
-@tc_enable()
 def repl():
     check_repl_initialized()
+    while True:
+        print("> ", end="")
+        display(eval_str(None))
+        print()
+
+
+def eval_str(s):
     ans = "no result"
-    print("> ", end="")
-    for input in g.read():
-        ans = g.eval(input, THE_GLOBAL_ENVIRONMENT)
-    display(ans)
-    print()
-    repl.tailcall()
+    for input in g.read(s):
+        ans = g.advance(g.eval(input, THE_GLOBAL_ENVIRONMENT))
+    return ans
 
 
 THE_GLOBAL_ENVIRONMENT = "not initialized"
@@ -775,16 +927,42 @@ def make_global_environment():
     )
 
 
+def error(msg, *args):
+    raise RuntimeError(msg, *args)
+
+
+def global_hash_set(key, value):
+    global GLOBAL_HASH_TABLE
+    GLOBAL_HASH_TABLE[key] = value
+
+
+def global_hash_get(key):
+    return GLOBAL_HASH_TABLE.get(key, None)
+
+
+GLOBAL_HASH_TABLE = {}
+
+
 INITIAL_ENV_BINDINGS = {
-    Symbol("+"): lambda a, b: a + b,
-    Symbol("-"): lambda a, b: a - b,
-    Symbol("*"): lambda a, b: a * b,
-    Symbol("/"): lambda a, b: a / b,
-    Symbol("="): lambda a, b: a == b,
-    Symbol("<"): lambda a, b: a < b,
-    Symbol(">"): lambda a, b: a > b,
-    Symbol("<="): lambda a, b: a <= b,
-    Symbol(">="): lambda a, b: a >= b,
+    symbol("null?"): is_null,
+    symbol("cons"): cons,
+    symbol("car"): car,
+    symbol("cdr"): cdr,
+    symbol("+"): lambda a, b: a + b,
+    symbol("-"): lambda a, b: a - b,
+    symbol("*"): lambda a, b: a * b,
+    symbol("/"): lambda a, b: a / b,
+    symbol("="): lambda a, b: a == b,
+    symbol("<"): lambda a, b: a < b,
+    symbol(">"): lambda a, b: a > b,
+    symbol("<="): lambda a, b: a <= b,
+    symbol(">="): lambda a, b: a >= b,
+    symbol("#t"): True,
+    symbol("#f"): False,
+    symbol("eq?"): lambda a, b: a is b,
+    symbol("error"): error,
+    symbol("global-hash-set!"): global_hash_set,
+    symbol("global-hash-get"): global_hash_get,
 }
 
 ##
