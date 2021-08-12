@@ -833,7 +833,7 @@ define_generic_procedure_handler(
 g.define_advance_handler(
     match_args(is_postponed),
     lambda object: g.advance(
-        g.eval(postponed_expression(object), postponed_environment(object))
+        g.eval(object.expression, object.environment)
     ),
 )
 

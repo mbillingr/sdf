@@ -72,8 +72,29 @@ def test_stream():
                 (kar stream)
                 (ref-stream (kdr stream) (- n 1))))
                 
-        (define fibs (kons 0 (kons 1 (add-streams (kdr fibs) fibs))))
-        
-        (ref-stream fibs 100)        
+        (define (map-stream proc (items lazy memo))
+            (if (empty-stream? items)
+                items
+                (kons (proc (kar items))
+                      (map-stream proc (kdr items)))))
+                      
+        (define (scale-stream items factor)
+            (map-stream (lambda (x) (* x factor))
+                        items))
+                 
+        (define (integral (integrand lazy memo) initial-value dt)
+            (define int
+                (kons initial-value
+                      (add-streams (scale-stream integrand dt)
+                                   int)))
+            int)  
+            
+        (define (solve f y0 dt)
+            (define y (integral dy y0 dt))
+            (define dy (map-stream f y))
+            y)
+            
+        (ref-stream (solve (lambda (x) x) 1 0.001) 500)
         """
+        # solution to exercise 5.8: make integrand lazy (and memoized)
     ) == 354224848179261915075
