@@ -35,11 +35,11 @@ def tail_call(func, *args, **kwargs):
     raise TailCall(func, args, kwargs)
 
 
-class TailCall(BaseException):
-    def __init__(self, func, args=(), kwargs={}):
+class TailCall(Exception):
+    def __init__(self, func, args=(), kwargs=None):
         self.func = func
         self.args = args
-        self.kwargs = kwargs
+        self.kwargs = kwargs or {}
 
 
 def tc_enable(simple=False):
@@ -975,6 +975,7 @@ def display_pair(p, parens=True):
         print("(", end="")
     display(car(p))
     if is_null(cdr(p)):
+        # no more items
         pass
     elif is_pair(cdr(p)):
         print(" ", end="")
