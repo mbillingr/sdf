@@ -1,5 +1,6 @@
-from generic_interpreter import symbol
-from generic_interpreter import initialize_repl, eval_str
+import pytest
+from chapter05.common.primitive_types import symbol
+from generic_interpreter import eval_str, initialize_repl
 
 
 def test_symbol_equality():
@@ -29,8 +30,9 @@ def test_lazy_argument():
 
 def test_lazy_memoization():
     initialize_repl()
-    assert eval_str(
-        """
+    assert (
+        eval_str(
+            """
         (define (kons (x lazy memo) (y lazy memo)) 
             (define (the_pair m) 
                 (cond ((eq? m 'kar) x) 
@@ -39,13 +41,16 @@ def test_lazy_memoization():
             the_pair)
         (eq? ((kons 1 2) 'kdr) 2)
         """
-    ) is True
+        )
+        is True
+    )
 
 
 def test_stream():
     initialize_repl()
-    assert eval_str(
-        """
+    assert (
+        eval_str(
+            """
         (define (kons (x lazy memo) (y lazy memo)) 
             (define (the_pair m) 
                 (cond ((eq? m 'kar) x) 
@@ -76,4 +81,23 @@ def test_stream():
         
         (ref-stream fibs 100)        
         """
-    ) == 354224848179261915075
+        )
+        == 354224848179261915075
+    )
+
+@pytest.mark.skip
+def test_bench_fib():
+    initialize_repl()
+    from time import time
+
+    start = time()
+    res = eval_str(
+        "(define (fib n) "
+        "   (cond ((< n 2) 1) "
+        "         (else (+ (fib (- n 1)) "
+        "                  (fib (- n 2))))))"
+        "(fib 25)"
+    )
+    stop = time()
+    print("TIME:", stop - start)
+    assert res == 121393
