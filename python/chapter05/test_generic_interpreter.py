@@ -1,3 +1,5 @@
+import pytest
+
 from generic_interpreter import symbol
 from generic_interpreter import initialize_repl, eval_str
 
@@ -77,3 +79,46 @@ def test_stream():
         (ref-stream fibs 100)        
         """
     ) == 354224848179261915075
+
+
+def test_restrictions():
+    initialize_repl()
+    assert eval_str(
+        """
+        (define (foo (x restrict-to integer?) y)
+            'ok)
+            
+        (foo (+ 1 2) 'b)
+        """
+    ) == symbol("ok")
+
+    with pytest.raises(AssertionError):
+        eval_str(
+            """
+            (define (foo (x restrict-to integer?) y)
+                'ok)
+                
+            (foo 'a 'b)
+            """
+        )
+
+    assert eval_str(
+        """
+        (define (even? n) (= (% n 2) 0))
+        (define (foo (x restrict-to even?))
+            'ok)
+            
+        (foo 42)
+        """
+    ) == symbol("ok")
+
+    with pytest.raises(AssertionError):
+        eval_str(
+            """
+            (define (even? n) (= (% n 2) 0))
+            (define (foo (x restrict-to even?))
+                'ok)
+                
+            (foo 7)
+            """
+        )

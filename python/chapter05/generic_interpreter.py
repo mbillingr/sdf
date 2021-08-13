@@ -35,11 +35,11 @@ def tail_call(func, *args, **kwargs):
     raise TailCall(func, args, kwargs)
 
 
-class TailCall(BaseException):
-    def __init__(self, func, args=(), kwargs={}):
+class TailCall(Exception):
+    def __init__(self, func, args=(), kwargs=None):
         self.func = func
         self.args = args
-        self.kwargs = kwargs
+        self.kwargs = kwargs or {}
 
 
 def tc_enable(simple=False):
@@ -832,9 +832,7 @@ define_generic_procedure_handler(
 
 g.define_advance_handler(
     match_args(is_postponed),
-    lambda object: g.advance(
-        g.eval(object.expression, object.environment)
-    ),
+    lambda object: g.advance(g.eval(object.expression, object.environment)),
 )
 
 
@@ -852,6 +850,35 @@ def postpone_memo(expression, environment):
 
 def advanced_value(x):
     return x.value
+
+
+def is_restricted(var_decl):
+    return is_pair(var_decl) and symbol("restrict-to") == cadr(var_decl)
+
+
+def restriction_predicate(var_decl):
+    return caddr(var_decl)
+
+
+def check_predicate(predicate_expr, operand, environment):
+    predicate = g.advance(g.eval(predicate_expr, environment))
+    assert g.apply(predicate, (operand,), environment)
+    return operand
+
+
+define_generic_procedure_handler(
+    g.handle_operand,
+    match_args(is_restricted, is_operand, is_environment),
+    lambda parameter, operand, environment: check_predicate(
+        restriction_predicate(parameter),
+        g.handle_operand(
+            procedure_parameter_name(parameter),
+            operand,
+            environment,
+        ),
+        environment,
+    ),
+)
 
 
 @dataclass
@@ -945,6 +972,7 @@ GLOBAL_HASH_TABLE = {}
 
 INITIAL_ENV_BINDINGS = {
     symbol("null?"): is_null,
+    symbol("integer?"): lambda x: isinstance(x, int),
     symbol("cons"): cons,
     symbol("car"): car,
     symbol("cdr"): cdr,
@@ -952,6 +980,7 @@ INITIAL_ENV_BINDINGS = {
     symbol("-"): lambda a, b: a - b,
     symbol("*"): lambda a, b: a * b,
     symbol("/"): lambda a, b: a / b,
+    symbol("%"): lambda a, b: a % b,
     symbol("="): lambda a, b: a == b,
     symbol("<"): lambda a, b: a < b,
     symbol(">"): lambda a, b: a > b,
@@ -975,6 +1004,7 @@ def display_pair(p, parens=True):
         print("(", end="")
     display(car(p))
     if is_null(cdr(p)):
+        # no more items
         pass
     elif is_pair(cdr(p)):
         print(" ", end="")
