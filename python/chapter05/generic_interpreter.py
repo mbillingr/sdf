@@ -74,53 +74,6 @@ from chapter05.common.syntax import (
 )
 
 
-class TcEnable:
-    """Use as decorator to make functions tail-call enabled.
-    This is contagious:
-    Functions that can be the target tail calls must obviously be decorated.
-    Functions that do tail-calls must be decorated too.
-    So basically every function must be decorated...
-    """
-
-    def __init__(self, func, simple=False):
-        self.raw_func = func
-        if simple:
-            self.func = func
-        else:
-            self.func = wrap_trampoline(func)
-
-    def __call__(self, *args, **kwargs):
-        return self.func(*args, **kwargs)
-
-    def tailcall(self, *args, **kwargs):
-        raise TailCall(self.raw_func, args, kwargs)
-
-
-def tail_call(func, *args, **kwargs):
-    raise TailCall(func, args, kwargs)
-
-
-class TailCall(Exception):
-    def __init__(self, func, args=(), kwargs=None):
-        self.func = func
-        self.args = args
-        self.kwargs = kwargs or {}
-
-
-def wrap_trampoline(function):
-    def trampoline(*args, **kwargs):
-        func = function
-        while True:
-            try:
-                return func(*args, **kwargs)
-            except TailCall as tc:
-                func = tc.func
-                args = tc.args
-                kwargs = tc.kwargs
-
-    return trampoline
-
-
 def default_eval(expression, environment):
     if is_application(expression):
         return g.apply(
