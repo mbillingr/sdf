@@ -85,6 +85,7 @@ def test_stream():
         == 354224848179261915075
     )
 
+
 @pytest.mark.skip
 def test_bench_fib():
     initialize_repl()

@@ -1,4 +1,5 @@
 from functools import reduce
+from weakref import WeakSet
 
 from chapter02.combinators import compose
 from chapter03.generic_procedures import (
@@ -6,7 +7,7 @@ from chapter03.generic_procedures import (
     match_args,
     simple_generic_procedure,
 )
-from chapter05.common.display import display
+
 import chapter05.common.symbols as S
 from chapter05.common.derived_syntax import (
     cond_to_if,
@@ -14,14 +15,19 @@ from chapter05.common.derived_syntax import (
     is_let,
     let_to_combination,
 )
+from chapter05.common.display import display
 from chapter05.common.environment import (
+    THE_EMPTY_ENVIRONMENT,
     define_variable,
     extend_environment,
     is_environment,
     lookup_variable_value,
     set_variable_value,
 )
-from chapter05.common.initial_environment import make_initial_environment
+from chapter05.common.initial_environment import (
+    make_initial_environment,
+    INITIAL_ENV_BINDINGS,
+)
 from chapter05.common.lazy import (
     advanced_value,
     is_advanced_memo,
@@ -129,9 +135,44 @@ class Executor:
         return self.proc(environment)
 
 
+def known_binding(sym):
+    if sym in [
+        S.PLUS,
+        S.MINUS,
+        S.STAR,
+        S.SLASH,
+        S.EQUALS,
+        S.LESS,
+        S.GREATER,
+        S.LESSEQ,
+        S.GREATEREQ,
+        S.EQ_P,
+        S.CAR,
+        S.CDR,
+    ]:
+        return INITIAL_ENV_BINDINGS.get(sym)
+    else:
+        return None
+
+
+def is_constant(executor):
+    return executor.proc in CONSTANT_EXECUTORS
+
+
+CONSTANT_EXECUTORS = WeakSet()
+
+
 def analyze_application(expression):
     operator_exec = analyze(operator(expression))
     operand_execs = tuple(map(analyze, operands(expression)))
+
+    known_operator_binding = known_binding(operator(expression))
+    if known_operator_binding and all(is_constant(ox) for ox in operand_execs):
+        expression_value = known_operator_binding(
+            *(ox(THE_EMPTY_ENVIRONMENT) for ox in operand_execs)
+        )
+        print("folding:", expression_value, "<-", expression)
+        return analyze_self_evaluating(expression_value)
 
     def execute_application(environment):
         return x.apply(
@@ -142,7 +183,11 @@ def analyze_application(expression):
 
 
 def analyze_self_evaluating(expression):
-    return lambda environment: expression
+    def execute_self_evaluating(environment):
+        return expression
+
+    CONSTANT_EXECUTORS.add(execute_self_evaluating)
+    return execute_self_evaluating
 
 
 define_generic_procedure_handler(
@@ -158,7 +203,12 @@ define_generic_procedure_handler(
 
 def analyze_quoted(expression):
     qval = text_of_quotation(expression)
-    return lambda environment: qval
+
+    def execute_quotation(environment):
+        return qval
+
+    CONSTANT_EXECUTORS.add(execute_quotation)
+    return execute_quotation
 
 
 define_generic_procedure_handler(x.analyze, match_args(is_quoted), analyze_quoted)
