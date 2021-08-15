@@ -1,4 +1,5 @@
 import pytest
+
 from chapter05.common.primitive_types import symbol
 from generic_interpreter import eval_str, initialize_repl
 
@@ -84,6 +85,7 @@ def test_stream():
         )
         == 354224848179261915075
     )
+
 
 @pytest.mark.skip
 def test_bench_fib():

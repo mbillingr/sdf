@@ -6,7 +6,7 @@ from chapter03.generic_procedures import (
     match_args,
     simple_generic_procedure,
 )
-from chapter05.common.display import display
+
 import chapter05.common.symbols as S
 from chapter05.common.derived_syntax import (
     cond_to_if,
@@ -14,6 +14,7 @@ from chapter05.common.derived_syntax import (
     is_let,
     let_to_combination,
 )
+from chapter05.common.display import display
 from chapter05.common.environment import (
     define_variable,
     extend_environment,

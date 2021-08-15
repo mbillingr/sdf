@@ -1,9 +1,10 @@
 from chapter03.generic_procedures import (
-    simple_generic_procedure,
     define_generic_procedure_handler,
     match_args,
+    simple_generic_procedure,
 )
-from chapter05.common.pairs import car, is_null, cdr, is_pair
+
+from chapter05.common.pairs import car, cdr, is_null, is_pair
 
 display = simple_generic_procedure("display", 1, lambda obj: print(obj, end=""))
 
