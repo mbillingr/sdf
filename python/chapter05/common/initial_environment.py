@@ -26,6 +26,7 @@ def global_hash_get(key):
 
 GLOBAL_HASH_TABLE = {}
 INITIAL_ENV_BINDINGS = {
+    symbol("foo"): lambda: 42,
     symbol("null?"): is_null,
     symbol("cons"): cons,
     symbol("car"): car,
