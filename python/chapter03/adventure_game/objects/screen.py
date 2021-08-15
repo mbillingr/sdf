@@ -1,3 +1,4 @@
+import chapter05.common.display
 from .object import Object
 
 
@@ -15,5 +16,5 @@ from chapter03.multimethods import match_args
 
 send_message.add_handler(
     match_args(Message, Screen),
-    lambda message, screen: screen.display(format_message(message))
+    lambda message, screen: chapter05.common.display.display(format_message(message))
 )

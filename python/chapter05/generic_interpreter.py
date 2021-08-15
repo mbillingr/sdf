@@ -10,6 +10,7 @@ from chapter05.common.derived_syntax import (
     is_let,
     let_to_combination,
 )
+from chapter05.common.display import display
 from chapter05.common.environment import (
     define_variable,
     extend_environment,
@@ -332,32 +333,6 @@ def check_repl_initialized():
     if THE_GLOBAL_ENVIRONMENT == "not initialized":
         raise RuntimeError("Interpreter not initialized. Run init() first.")
 
-
-##
-
-display = simple_generic_procedure("display", 1, lambda obj: print(obj, end=""))
-
-
-def display_pair(p, parens=True):
-    if parens:
-        print("(", end="")
-    display(car(p))
-    if is_null(cdr(p)):
-        # no more items
-        pass
-    elif is_pair(cdr(p)):
-        print(" ", end="")
-        display_pair(cdr(p), parens=False)
-    else:
-        print(" . ", end="")
-        display(cdr(p))
-    if parens:
-        print(")", end="")
-
-
-define_generic_procedure_handler(display, match_args(is_pair), display_pair)
-
-##
 
 if __name__ == "__main__":
     a = Symbol("a")

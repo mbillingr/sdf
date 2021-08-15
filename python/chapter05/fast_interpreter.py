@@ -6,7 +6,7 @@ from chapter03.generic_procedures import (
     match_args,
     simple_generic_procedure,
 )
-
+from chapter05.common.display import display
 import chapter05.common.symbols as S
 from chapter05.common.derived_syntax import (
     cond_to_if,
@@ -132,9 +132,13 @@ class Executor:
 def analyze_application(expression):
     operator_exec = analyze(operator(expression))
     operand_execs = tuple(map(analyze, operands(expression)))
-    return lambda environment: x.apply(
-        x.advance(operator_exec(environment)), operand_execs, environment
-    )
+
+    def execute_application(environment):
+        return x.apply(
+            x.advance(operator_exec(environment)), operand_execs, environment
+        )
+
+    return execute_application
 
 
 def analyze_self_evaluating(expression):
@@ -170,7 +174,9 @@ define_generic_procedure_handler(x.analyze, match_args(is_variable), analyze_var
 def analyze_lambda(expression):
     variables = lambda_parameters(expression)
     body_exec = analyze(lambda_body(expression))
-    return lambda environment: make_compound_procedure(variables, body_exec, environment)
+    return lambda environment: make_compound_procedure(
+        variables, body_exec, environment
+    )
 
 
 define_generic_procedure_handler(x.analyze, match_args(is_lambda), analyze_lambda)
@@ -308,3 +314,9 @@ define_generic_procedure_handler(
 define_generic_procedure_handler(
     x.advance, match_args(is_advanced_memo), advanced_value
 )
+
+if __name__ == "__main__":
+    while True:
+        print("> ", end="")
+        display(eval_str(None))
+        print()
