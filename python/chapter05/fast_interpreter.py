@@ -30,7 +30,7 @@ from chapter05.common.lazy import (
     postpone,
     postpone_memo,
 )
-from chapter05.common.pairs import is_null, length
+from chapter05.common.pairs import is_null, length, is_pair, car, cdr
 from chapter05.common.parser import read
 from chapter05.common.primitive_types import is_boolean, is_number, is_string
 from chapter05.common.procedures import (
@@ -170,7 +170,9 @@ define_generic_procedure_handler(x.analyze, match_args(is_variable), analyze_var
 def analyze_lambda(expression):
     variables = lambda_parameters(expression)
     body_exec = analyze(lambda_body(expression))
-    return lambda environment: make_compound_procedure(variables, body_exec, environment)
+    return lambda environment: make_compound_procedure(
+        variables, body_exec, environment
+    )
 
 
 define_generic_procedure_handler(x.analyze, match_args(is_lambda), analyze_lambda)
@@ -262,15 +264,29 @@ define_generic_procedure_handler(
 
 
 def apply_compound_procedure(procedure, operand_execs, calling_environment):
-    if length(procedure_parameters(procedure)) != length(operand_execs):
+    param_names = procedure_parameters(procedure)
+    arguments = []
+    params, opex = param_names, operand_execs
+    while is_pair(params):
+        arguments.append(x.handle_operand(car(params), car(opex), calling_environment))
+        params = cdr(params)
+        opex = cdr(opex)
+
+    if not is_null(params):
+        param_names = (params,)
+        arguments.append(
+            tuple(
+                map(
+                    lambda ox: x.handle_operand(params, ox, calling_environment),
+                    opex,
+                )
+            )
+        )
+    elif not is_null(opex):
         raise TypeError("Wrong number of arguments supplied")
-    params = procedure_parameters(procedure)
+
     body_exec = procedure_body(procedure)
-    names = map(procedure_parameter_name, params)
-    arguments = map(
-        lambda args: x.handle_operand(*args, calling_environment),
-        zip(params, operand_execs),
-    )
+    names = map(procedure_parameter_name, param_names)
     return body_exec(
         extend_environment(names, arguments, procedure_environment(procedure))
     )

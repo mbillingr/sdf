@@ -71,3 +71,7 @@ def test_bench_fib():
     stop = time()
     print("TIME:", stop - start)
     assert res == 121393
+
+
+def test_nary_procedure():
+    assert eval_str("(define list (lambda x x))" "(list 1 2 3)") == (1, 2, 3)
