@@ -1,4 +1,6 @@
 from functools import reduce
+from weakref import WeakKeyDictionary
+
 
 from chapter02.combinators import compose
 from chapter03.generic_procedures import (
@@ -126,7 +128,11 @@ class Executor:
         self.proc = proc
 
     def __call__(self, environment):
+        print("executing", self.proc.__name__, EXECUTOR_METADATA[self.proc])
         return self.proc(environment)
+
+
+EXECUTOR_METADATA = WeakKeyDictionary()
 
 
 def analyze_application(expression):
@@ -138,11 +144,16 @@ def analyze_application(expression):
             x.advance(operator_exec(environment)), operand_execs, environment
         )
 
+    EXECUTOR_METADATA[execute_application] = expression
     return execute_application
 
 
 def analyze_self_evaluating(expression):
-    return lambda environment: expression
+    def execute_self_evaluating(_environment):
+        return expression
+
+    EXECUTOR_METADATA[execute_self_evaluating] = expression
+    return execute_self_evaluating
 
 
 define_generic_procedure_handler(
@@ -158,14 +169,23 @@ define_generic_procedure_handler(
 
 def analyze_quoted(expression):
     qval = text_of_quotation(expression)
-    return lambda environment: qval
+
+    def execute_quotation(_environment):
+        return qval
+
+    EXECUTOR_METADATA[execute_quotation] = expression
+    return execute_quotation
 
 
 define_generic_procedure_handler(x.analyze, match_args(is_quoted), analyze_quoted)
 
 
 def analyze_variable(expression):
-    return lambda environment: lookup_variable_value(expression, environment)
+    def execute_variable(environment):
+        return lookup_variable_value(expression, environment)
+
+    EXECUTOR_METADATA[execute_variable] = expression
+    return execute_variable
 
 
 define_generic_procedure_handler(x.analyze, match_args(is_variable), analyze_variable)
@@ -174,9 +194,12 @@ define_generic_procedure_handler(x.analyze, match_args(is_variable), analyze_var
 def analyze_lambda(expression):
     variables = lambda_parameters(expression)
     body_exec = analyze(lambda_body(expression))
-    return lambda environment: make_compound_procedure(
-        variables, body_exec, environment
-    )
+
+    def execute_lambda(environment):
+        return make_compound_procedure(variables, body_exec, environment)
+
+    EXECUTOR_METADATA[execute_lambda] = expression
+    return execute_lambda
 
 
 define_generic_procedure_handler(x.analyze, match_args(is_lambda), analyze_lambda)
@@ -186,11 +209,15 @@ def analyze_if(expression):
     predicate_exec = analyze(if_predicate(expression))
     consequent_exec = analyze(if_consequent(expression))
     alternative_exec = analyze(if_alternative(expression))
-    return (
-        lambda environment: consequent_exec(environment)
-        if x.advance(predicate_exec(environment))
-        else alternative_exec(environment)
-    )
+
+    def execute_if(environment):
+        if x.advance(predicate_exec(environment)):
+            return consequent_exec(environment)
+        else:
+            alternative_exec(environment)
+
+    EXECUTOR_METADATA[execute_if] = expression
+    return execute_if
 
 
 define_generic_procedure_handler(x.analyze, match_args(is_if), analyze_if)
@@ -209,7 +236,9 @@ def analyze_begin(expression):
     if is_null(exps):
         raise SyntaxError("Empty sequence")
 
-    return reduce(chain_execs, map(analyze, exps))
+    execute_sequence = reduce(chain_execs, map(analyze, exps))
+    EXECUTOR_METADATA[execute_sequence] = expression
+    return execute_sequence
 
 
 define_generic_procedure_handler(x.analyze, match_args(is_begin), analyze_begin)
@@ -219,11 +248,12 @@ def analyze_assignment(expression):
     var = assignment_variable(expression)
     value_exec = analyze(assignment_value(expression))
 
-    def the_assignment(environment):
+    def execute_assignment(environment):
         set_variable_value(var, value_exec(environment), environment)
         return S.OK
 
-    return the_assignment
+    EXECUTOR_METADATA[execute_assignment] = expression
+    return execute_assignment
 
 
 define_generic_procedure_handler(
@@ -235,11 +265,12 @@ def analyze_definition(expression):
     var = definition_variable(expression)
     value_exec = analyze(definition_value(expression))
 
-    def the_definition(environment):
+    def execute_definition(environment):
         define_variable(var, value_exec(environment), environment)
         return var
 
-    return the_definition
+    EXECUTOR_METADATA[execute_definition] = expression
+    return execute_definition
 
 
 define_generic_procedure_handler(
