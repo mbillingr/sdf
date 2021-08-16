@@ -1,6 +1,7 @@
 from chapter05.common.environment import THE_EMPTY_ENVIRONMENT, extend_environment
 from chapter05.common.pairs import cadr, car, cdr, cons, is_null
 from chapter05.common.primitive_types import symbol
+from chapter05.common.display import display
 
 
 def make_initial_environment():
@@ -35,6 +36,7 @@ INITIAL_ENV_BINDINGS = {
     symbol("-"): lambda a, b: a - b,
     symbol("*"): lambda a, b: a * b,
     symbol("/"): lambda a, b: a / b,
+    symbol("%"): lambda a, b: a % b,
     symbol("="): lambda a, b: a == b,
     symbol("<"): lambda a, b: a < b,
     symbol(">"): lambda a, b: a > b,
@@ -46,5 +48,7 @@ INITIAL_ENV_BINDINGS = {
     symbol("error"): error,
     symbol("global-hash-set!"): global_hash_set,
     symbol("global-hash-get"): global_hash_get,
-    symbol("display"): lambda *args: print(*args),
+    symbol("display"): lambda *args: display(*args),
+    symbol("newline"): lambda : print(),
+    symbol("list"): lambda *args: args,
 }
