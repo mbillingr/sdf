@@ -10,7 +10,7 @@ def test_application():
 
 
 def test_self_evaluating_number():
-    assert a.eval(42, make_initial_environment()) == 42
+    assert eval_str("42", make_initial_environment()) == 42
 
 
 def test_quotation():
@@ -19,7 +19,7 @@ def test_quotation():
 
 def test_variable():
     assert eval_str("+") is not None
-    with pytest.raises(RuntimeError):
+    with pytest.raises(NameError, match="foobar"):
         eval_str("foobar")
 
 
@@ -60,6 +60,11 @@ def test_let():
 
 def test_maybeset_behaves_like_set():
     assert eval_str("(define x 0) (maybe-set! x 1) x") == 1
+
+
+def test_amb():
+    assert eval_str("(amb 1 2 3)") == 1
+    assert eval_str("(amb)") == "no value"
 
 
 @pytest.mark.skip

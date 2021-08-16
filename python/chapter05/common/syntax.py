@@ -152,3 +152,11 @@ def is_lazy_memo(var_decl):
         and memq(symbol("lazy"), cdr(var_decl))
         and memq(symbol("memo"), cdr(var_decl))
     )
+
+
+def is_amb(exp):
+    return is_tagged_list(exp, S.AMB)
+
+
+def amb_alternatives(exp):
+    return cdr(exp)

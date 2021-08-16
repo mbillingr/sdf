@@ -46,4 +46,5 @@ INITIAL_ENV_BINDINGS = {
     symbol("error"): error,
     symbol("global-hash-set!"): global_hash_set,
     symbol("global-hash-get"): global_hash_get,
+    symbol("display"): lambda *args: print(*args),
 }

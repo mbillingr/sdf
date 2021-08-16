@@ -31,9 +31,9 @@ from chapter05.common.lazy import (
     postpone,
     postpone_memo,
 )
-from chapter05.common.pairs import is_null, length
+from chapter05.common.pairs import car, cdr, is_null, is_pair, length
 from chapter05.common.parser import read
-from chapter05.common.primitive_types import is_boolean, is_number, is_string
+from chapter05.common.primitive_types import is_boolean, is_number, is_string, symbol
 from chapter05.common.procedures import (
     apply_primitive_procedure,
     is_compound_procedure,
@@ -45,6 +45,7 @@ from chapter05.common.procedures import (
     procedure_parameters,
 )
 from chapter05.common.syntax import (
+    amb_alternatives,
     assignment_value,
     assignment_variable,
     begin_actions,
@@ -53,6 +54,7 @@ from chapter05.common.syntax import (
     if_alternative,
     if_consequent,
     if_predicate,
+    is_amb,
     is_application,
     is_assignment,
     is_begin,
@@ -94,10 +96,16 @@ class Return(Exception):
 def eval_str(s, env=None):
     if env is None:
         env = THE_GLOBAL_ENVIRONMENT
-    ans = "no result"
-    for input in read(s):
-        ans = a.eval(input, env)
-    return ans
+    inputs = tuple(read(s))
+    expression = inputs[0] if len(inputs) == 1 else (S.BEGIN,) + inputs
+
+    def fail_k(*args):
+        raise Return("no value")
+
+    def success_k(value, _fail):
+        raise Return(value)
+
+    return run_execution(a.eval, expression, env, success_k, fail_k)
 
 
 def default_analyze(expression):
@@ -108,21 +116,14 @@ def default_analyze(expression):
 
 
 def default_apply(procedure, _operand_execs, _calling_environment, _succeed, fail):
-    return continue_with(fail, "Unknown procedure type", procedure)
+    raise TypeError(f"Unknown procedure type {procedure}")
 
 
 class a:
     @staticmethod
-    def eval(expression, environment):
+    def eval(expression, environment, succeed, fail):
         exec = analyze(expression)
-
-        def succeed(value, _fail):
-            raise Return(value)
-
-        def fail(*what):
-            raise RuntimeError("Unhandled failure:", *what)
-
-        return run_execution(exec, environment, succeed, fail)
+        return continue_with(exec, environment, succeed, fail)
 
     analyze = simple_generic_procedure("x:analyze", 1, default_analyze)
     apply = simple_generic_procedure("x:apply", 5, default_apply)
@@ -201,7 +202,7 @@ def analyze_variable(expression):
     def execute_variable(env, succeed, fail):
         value = lookup_variable_value(expression, env)
         if value is None:
-            return continue_with(fail, "unbound variable", expression)
+            raise NameError("unbound variable", expression)
         else:
             return continue_with(succeed, value, fail)
 
@@ -325,6 +326,29 @@ define_generic_procedure_handler(
     a.analyze, match_args(is_definition), analyze_definition
 )
 
+
+def analyze_amb(expression):
+    alternative_execs = tuple(map(analyze, amb_alternatives(expression)))
+
+    def execute_amb(env, succeed, fail):
+        def loop(alts=alternative_execs):
+            if is_pair(alts):
+                return continue_with(
+                    car(alts),
+                    env,
+                    succeed,
+                    lambda *args: continue_with(loop, cdr(alts)),
+                )
+            else:
+                return continue_with(fail)
+
+        return continue_with(loop)
+
+    return execute_amb
+
+
+define_generic_procedure_handler(a.analyze, match_args(is_amb), analyze_amb)
+
 # === derived syntax ===
 
 define_generic_procedure_handler(
@@ -426,8 +450,37 @@ define_generic_procedure_handler(
     a.advance, match_args(is_advanced_memo), advanced_value
 )
 
-if __name__ == "__main__":
-    while True:
+
+def repl():
+    def internal_loop(succeed, fail):
         print("> ", end="")
-        display(eval_str(None))
+        inputs = tuple(read(input()))
+
+        expression = inputs[0] if len(inputs) == 1 else (S.BEGIN,) + inputs
+
+        def fail_k(*args):
+            print(";;; There are no more values of", expression)
+            return continue_with(internal_loop, success_k, no_problem)
+
+        if expression == symbol("try-again"):
+            return continue_with(fail)
+        else:
+            print(";;; Starting a new problem")
+            return continue_with(
+                a.eval, expression, THE_GLOBAL_ENVIRONMENT, succeed, fail_k
+            )
+
+    def success_k(value, fail):
+        display(value)
         print()
+        return continue_with(internal_loop, success_k, fail)
+
+    def no_problem():
+        print(";;; There is no current problem")
+        return continue_with(internal_loop, success_k, no_problem)
+
+    run_execution(internal_loop, success_k, no_problem)
+
+
+if __name__ == "__main__":
+    repl()
