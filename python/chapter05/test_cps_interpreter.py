@@ -2,7 +2,7 @@ import pytest
 
 from chapter05.common.primitive_types import symbol
 from chapter05.common.procedures import is_compound_procedure
-from cps_interpreter import eval_str, make_initial_environment, a
+from cps_interpreter import a, eval_str, make_initial_environment
 
 
 def test_application():
@@ -56,6 +56,10 @@ def test_cond():
 
 def test_let():
     assert eval_str("(let ((x 1) (y 2)) (+ x y))") == 3
+
+
+def test_maybeset_behaves_like_set():
+    assert eval_str("(define x 0) (maybe-set! x 1) x") == 1
 
 
 @pytest.mark.skip

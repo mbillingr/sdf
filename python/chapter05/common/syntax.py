@@ -112,6 +112,10 @@ def is_assignment(exp):
     return is_tagged_list(exp, Symbol("set!"))
 
 
+def is_undoable_assignment(exp):
+    return is_tagged_list(exp, Symbol("maybe-set!"))
+
+
 assignment_variable = cadr
 assignment_value = caddr
 

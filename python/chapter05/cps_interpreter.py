@@ -62,6 +62,7 @@ from chapter05.common.syntax import (
     is_lazy,
     is_lazy_memo,
     is_quoted,
+    is_undoable_assignment,
     is_variable,
     lambda_body,
     lambda_parameters,
@@ -278,6 +279,31 @@ def analyze_assignment(expression):
 
 define_generic_procedure_handler(
     a.analyze, match_args(is_assignment), analyze_assignment
+)
+
+
+def analyze_undoable_assignment(expression):
+    var = assignment_variable(expression)
+    value_exec = analyze(assignment_value(expression))
+
+    def execute_assignment(env, succeed, fail):
+        def the_assignment(new_val, val_fail):
+            old_val = lookup_variable_value(var, env)
+            set_variable_value(var, new_val, env)
+
+            def restore_old_value(*args):
+                set_variable_value(var, old_val, env)
+                return continue_with(val_fail, *args)
+
+            return continue_with(succeed, S.OK, restore_old_value)
+
+        return continue_with(value_exec, env, the_assignment, fail)
+
+    return execute_assignment
+
+
+define_generic_procedure_handler(
+    a.analyze, match_args(is_undoable_assignment), analyze_undoable_assignment
 )
 
 
