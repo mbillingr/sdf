@@ -365,11 +365,9 @@ define_generic_procedure_handler(
 def apply_strict_primitive_procedure(procedure, operand_execs, env, succeed, fail):
     def execute_proc(args, fail0):
         if TRACE_APPLICATIONS:
-            display(cons(symbol('<primitive>'), args))
+            display(cons(symbol("<primitive>"), args))
             print()
-        return continue_with(
-            succeed, apply_primitive_procedure(procedure, args), fail0
-        )
+        return continue_with(succeed, apply_primitive_procedure(procedure, args), fail0)
 
     for operand_exec in operand_execs[::-1]:
         execute_proc = lambda args, f, operand_exec=operand_exec, execute_proc=execute_proc: execute_strict(
@@ -398,15 +396,19 @@ def apply_compound_procedure(
         raise TypeError("Wrong number of arguments supplied")
     params = procedure_parameters(procedure)
     body_exec = procedure_body(procedure)
-    names = map(procedure_parameter_name, params)
+    names = tuple(map(procedure_parameter_name, params))
 
     def execute_proc(arguments, fail0):
+        body_env = extend_environment(
+            names, arguments, procedure_environment(procedure)
+        )
         if TRACE_APPLICATIONS:
             display(cons(procedure_name(procedure), arguments))
+            display(body_env)
             print()
         return continue_with(
             body_exec,
-            extend_environment(names, arguments, procedure_environment(procedure)),
+            body_env,
             succeed,
             fail0,
         )
@@ -447,16 +449,24 @@ define_generic_procedure_handler(
 
 define_generic_procedure_handler(
     a.advance,
-    match_args(is_postponed),
-    lambda object: a.advance(object.expression(object.environment)),
+    match_args(is_postponed, callable, callable),
+    lambda object, succeed, fail: execute_strict(
+        object.expression, object.environment, succeed, fail
+    ),
 )
+
 define_generic_procedure_handler(
     a.advance,
-    match_args(is_postponed_memo),
-    lambda object: object.set_value(a.advance(object.expression(object.environment))),
+    match_args(is_postponed_memo, callable, callable),
+    lambda object, succeed, fail: execute_strict(
+        object.expression,
+        object.environment,
+        lambda value, fail0: continue_with(succeed, object.set_value(value), fail0),
+        fail,
+    ),
 )
 define_generic_procedure_handler(
-    a.advance, match_args(is_advanced_memo), advanced_value
+    a.advance, match_args(is_advanced_memo), lambda object, succeed, fail: continue_with(succeed, advanced_value(object), fail)
 )
 
 

@@ -1,5 +1,5 @@
 from chapter05.common.environment import THE_EMPTY_ENVIRONMENT, extend_environment
-from chapter05.common.pairs import cadr, car, cdr, cons, is_null, is_pair
+from chapter05.common.pairs import cadr, car, cdr, cons, is_null, is_pair, length
 from chapter05.common.primitive_types import symbol
 from chapter05.common.display import display
 
@@ -33,6 +33,7 @@ INITIAL_ENV_BINDINGS = {
     symbol("cons"): cons,
     symbol("car"): car,
     symbol("cdr"): cdr,
+    symbol("length"): length,
     symbol("+"): lambda a, b: a + b,
     symbol("-"): lambda a, b: a - b,
     symbol("*"): lambda a, b: a * b,
