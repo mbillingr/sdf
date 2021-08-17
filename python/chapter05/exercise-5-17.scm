@@ -12,6 +12,13 @@
          (car sequence))
         (else (assoc key (cdr sequence)))))
 
+(define (memq obj sequence)
+  (cond ((null? sequence)
+         #f)
+        ((eq? (car sequence) obj)
+         sequence)
+        (else (memq key (cdr sequence)))))
+
 (define (require p)
   (if p 'ok (amb)))
 
@@ -52,6 +59,22 @@
 
 (define (hand-score person)
   (car (cdr (cdr (cdr person)))))
+
+
+(define (permutation n seq acc)
+  '(if (pair? acc)
+       '(require (not (memq (car acc) (cdr acc))))
+       'ok)
+  (if (= n 0)
+      acc
+      (permutation (- n 1)
+                   seq
+                   (cons (amb* seq) acc))))
+
+(define (amb* seq)
+  (if (null? seq)
+      (amb)
+      (amb (car seq) (amb* (cdr seq)))))
 
 
 (define ben 'uninitialized)
