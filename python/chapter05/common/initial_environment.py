@@ -1,5 +1,5 @@
 from chapter05.common.environment import THE_EMPTY_ENVIRONMENT, extend_environment
-from chapter05.common.pairs import cadr, car, cdr, cons, is_null
+from chapter05.common.pairs import cadr, car, cdr, cons, is_null, is_pair
 from chapter05.common.primitive_types import symbol
 from chapter05.common.display import display
 
@@ -29,6 +29,7 @@ GLOBAL_HASH_TABLE = {}
 INITIAL_ENV_BINDINGS = {
     symbol("foo"): lambda: 42,
     symbol("null?"): is_null,
+    symbol("pair?"): is_pair,
     symbol("cons"): cons,
     symbol("car"): car,
     symbol("cdr"): cdr,
@@ -49,6 +50,6 @@ INITIAL_ENV_BINDINGS = {
     symbol("global-hash-set!"): global_hash_set,
     symbol("global-hash-get"): global_hash_get,
     symbol("display"): lambda *args: display(*args),
-    symbol("newline"): lambda : print(),
+    symbol("newline"): lambda: print(),
     symbol("list"): lambda *args: args,
 }

@@ -366,11 +366,11 @@ def apply_strict_primitive_procedure(procedure, operand_execs, env, succeed, fai
         succeed, apply_primitive_procedure(procedure, args), fail0
     )
 
-    for operand_exec in operand_execs:
+    for operand_exec in operand_execs[::-1]:
         execute_proc = lambda args, f, operand_exec=operand_exec, execute_proc=execute_proc: execute_strict(
             operand_exec,
             env,
-            lambda arg, farg: continue_with(execute_proc, (arg,) + args, farg),
+            lambda arg, farg: continue_with(execute_proc, args + (arg,), farg),
             f,
         )
 
@@ -402,7 +402,7 @@ def apply_compound_procedure(
         fail0,
     )
 
-    for param, operand_exec in zip(params, operand_execs):
+    for param, operand_exec in zip(params[::-1], operand_execs[::-1]):
         execute_proc = lambda args, f, operand_exec=operand_exec, execute_proc=execute_proc: continue_with(
             a.handle_operand,
             param,

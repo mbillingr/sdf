@@ -67,6 +67,16 @@ def test_amb():
     assert eval_str("(amb)") == "no value"
 
 
+def test_argument_evaluation_order():
+    assert eval_str(
+        "(define x '())"
+        "(define (stored value) (set! x (cons value x)) value)"
+        "(define (ternary a b c) 'ignore)"
+        "(ternary (stored 1) (stored 2) (stored 3))"
+        "x"
+    ) == (3, 2, 1)
+
+
 @pytest.mark.skip
 def test_bench_fib():
     from time import time

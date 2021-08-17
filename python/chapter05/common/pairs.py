@@ -35,6 +35,13 @@ class Pair:
     car: object
     cdr: object
 
+    def __eq__(self, other):
+        if not is_pair(other):
+            return False
+        if not self.car == car(other):
+            return False
+        return self.cdr == cdr(other)
+
 
 def is_pair(obj):
     return isinstance(obj, Pair) or isinstance(obj, tuple) and len(obj) >= 1
