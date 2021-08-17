@@ -315,6 +315,7 @@ def analyze_definition(expression):
     def execute_definition(env, succeed, fail):
         def the_definition(new_val, val_fail):
             define_variable(var, new_val, env)
+            PROCEDURE_NAMES[new_val] = var
             return continue_with(succeed, var, val_fail)
 
         return continue_with(value_exec, env, the_definition, fail)
@@ -362,6 +363,9 @@ define_generic_procedure_handler(
 
 
 def apply_strict_primitive_procedure(procedure, operand_execs, env, succeed, fail):
+    if TRACE_APPLICATIONS:
+        print(f"applying primitive with {length(operand_execs)} arguments")
+
     execute_proc = lambda args, fail0: continue_with(
         succeed, apply_primitive_procedure(procedure, args), fail0
     )
@@ -389,8 +393,12 @@ define_generic_procedure_handler(
 def apply_compound_procedure(
     procedure, operand_execs, calling_environment, succeed, fail
 ):
+    if TRACE_APPLICATIONS:
+        print(
+            f"applying {procedure_name(procedure)}{procedure_parameters(procedure)} with {length(operand_execs)} arguments"
+        )
     if length(procedure_parameters(procedure)) != length(operand_execs):
-        return continue_with(fail, "Wrong number of arguments supplied")
+        raise TypeError("Wrong number of arguments supplied")
     params = procedure_parameters(procedure)
     body_exec = procedure_body(procedure)
     names = map(procedure_parameter_name, params)
@@ -480,6 +488,14 @@ def repl():
         return continue_with(internal_loop, success_k, no_problem)
 
     run_execution(internal_loop, success_k, no_problem)
+
+
+def procedure_name(procedure):
+    return PROCEDURE_NAMES.get(procedure, "<unknown>")
+
+
+TRACE_APPLICATIONS = False
+PROCEDURE_NAMES = {}
 
 
 if __name__ == "__main__":
