@@ -17,10 +17,13 @@
          #f)
         ((eq? (car sequence) obj)
          sequence)
-        (else (memq key (cdr sequence)))))
+        (else (memq obj (cdr sequence)))))
 
 (define (require p)
   (if (not p) (amb) 'ok))
+
+(define (deny p)
+  (if p (amb) 'ok))
 
 (define (not p)
   (if p #f #t))
@@ -61,15 +64,18 @@
   (car (cdr (cdr (cdr person)))))
 
 
-(define (permutation n seq acc)
-  '(if (pair? acc)
-       '(require (not (memq (car acc) (cdr acc))))
-       'ok)
-  (if (= n 0)
-      acc
-      (permutation (- n 1)
-                   seq
-                   (cons (amb* seq) acc))))
+(define (perm) (permutation 2 '(a b) '()))
+
+(define (permutation (seq lazy memo))
+  (define (loop n acc)
+    (if (pair? acc)
+        (require (not (memq (car acc) (cdr acc))))
+        'ok)
+    (if (= n 0)
+        acc
+        (loop (- n 1)
+              (cons (amb* seq) acc))))
+  (loop (length seq) '()))
 
 (define (amb* seq)
   (if (null? seq)
@@ -84,34 +90,34 @@
 (define (req a b) (require (= a b)))
 
 
-'(begin
-   (define ben 'uninitialized)
-   (define eva 'uninitialized)
-   (define alyssa 'uninitialized)
-   (define luis 'uninitialized)
-   (define cy 'uninitialized)
-   (define lem 'uninitialized)
+(begin
+  (define ben 'uninitialized)
+  (define eva 'uninitialized)
+  (define alyssa 'uninitialized)
+  (define luis 'uninitialized)
+  (define cy 'uninitialized)
+  (define lem 'uninitialized)
 
-   (define people 'uninitialized)
+  (define people 'uninitialized)
 
-   (define counter 0)
+  (define counter 0)
 
-   (maybe-set! people (list (list 'ben 'man 1 20)
-                            (list 'cy 'man (amb 2 3 ) (amb 10 20 30))
-                            (list 'lem 'man (amb 2 3) (amb 10 20 30))))
+  (maybe-set! people (list (list 'ben 'man 1 20)
+                           (list 'cy 'man (amb 2 3 ) (amb 10 20 30))
+                           (list 'lem 'man (amb 2 3) (amb 10 20 30))))
 
-   (if (= (% counter 10000) 0)
-       (begin (display counter) (newline))
-       'ok)
-   (set! counter (+ counter 1))
+  (if (= (% counter 10000) 0)
+      (begin (display counter) (newline))
+      'ok)
+  (set! counter (+ counter 1))
 
-   (display "Solution") (newline)
-   (for-each (lambda (person)
-               (display person)
-               (newline))
-             people)
-   (newline)
+  (display "Solution") (newline)
+  (for-each (lambda (person)
+              (display person)
+              (newline))
+            people)
+  (newline)
 
-   (require (not (= (hand-score (person 'ben)) (hand-score (person 'lem)))))
-   (require (not (= (hand-score (person 'ben)) (hand-score (person 'cy)))))
-   (require (not (= (hand-score (person 'cy)) (hand-score (person 'lem))))))
+  (require (not (= (hand-score (person 'ben)) (hand-score (person 'lem)))))
+  (require (not (= (hand-score (person 'ben)) (hand-score (person 'cy)))))
+  (require (not (= (hand-score (person 'cy)) (hand-score (person 'lem))))))
