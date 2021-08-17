@@ -67,6 +67,15 @@ def test_amb():
     assert eval_str("(amb)") == "no value"
 
 
+def test_amb_preserves_side_effects():
+    eval_str(
+        "(begin (define x '()) " 
+        "       (set! x (cons (amb 1 2 3) x)) " 
+        "       (amb))"
+    )
+    assert eval_str("x") == (3, 2, 1)
+
+
 def test_argument_evaluation_order():
     assert eval_str(
         "(define x '())"
