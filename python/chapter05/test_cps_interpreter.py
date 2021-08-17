@@ -69,9 +69,7 @@ def test_amb():
 
 def test_amb_preserves_side_effects():
     eval_str(
-        "(begin (define x '()) " 
-        "       (set! x (cons (amb 1 2 3) x)) " 
-        "       (amb))"
+        "(begin (define x '()) " "       (set! x (cons (amb 1 2 3) x)) " "       (amb))"
     )
     assert eval_str("x") == (3, 2, 1)
 
@@ -84,6 +82,16 @@ def test_argument_evaluation_order():
         "(ternary (stored 1) (stored 2) (stored 3))"
         "x"
     ) == (3, 2, 1)
+
+
+def test_primitive_argument_order():
+    assert eval_str("(list 1 2 3)") == (1, 2, 3)
+
+
+def test_compound_argument_order():
+    assert eval_str("(define (triple a b c) "
+                    "  (cons a (cons b (cons c '()))))"
+                    "(triple 1 2 3)") == (1, 2, 3)
 
 
 @pytest.mark.skip

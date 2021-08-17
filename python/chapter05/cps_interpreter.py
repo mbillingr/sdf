@@ -31,7 +31,7 @@ from chapter05.common.lazy import (
     postpone,
     postpone_memo,
 )
-from chapter05.common.pairs import car, cdr, is_null, is_pair, length
+from chapter05.common.pairs import car, cdr, is_null, is_pair, length, cons
 from chapter05.common.parser import read
 from chapter05.common.primitive_types import is_boolean, is_number, is_string, symbol
 from chapter05.common.procedures import (
@@ -363,12 +363,13 @@ define_generic_procedure_handler(
 
 
 def apply_strict_primitive_procedure(procedure, operand_execs, env, succeed, fail):
-    if TRACE_APPLICATIONS:
-        print(f"applying primitive with {length(operand_execs)} arguments")
-
-    execute_proc = lambda args, fail0: continue_with(
-        succeed, apply_primitive_procedure(procedure, args), fail0
-    )
+    def execute_proc(args, fail0):
+        if TRACE_APPLICATIONS:
+            display(cons(symbol('<primitive>'), args))
+            print()
+        return continue_with(
+            succeed, apply_primitive_procedure(procedure, args), fail0
+        )
 
     for operand_exec in operand_execs[::-1]:
         execute_proc = lambda args, f, operand_exec=operand_exec, execute_proc=execute_proc: execute_strict(
@@ -393,22 +394,22 @@ define_generic_procedure_handler(
 def apply_compound_procedure(
     procedure, operand_execs, calling_environment, succeed, fail
 ):
-    if TRACE_APPLICATIONS:
-        print(
-            f"applying {procedure_name(procedure)}{procedure_parameters(procedure)} with {length(operand_execs)} arguments"
-        )
     if length(procedure_parameters(procedure)) != length(operand_execs):
         raise TypeError("Wrong number of arguments supplied")
     params = procedure_parameters(procedure)
     body_exec = procedure_body(procedure)
     names = map(procedure_parameter_name, params)
 
-    execute_proc = lambda arguments, fail0: continue_with(
-        body_exec,
-        extend_environment(names, arguments, procedure_environment(procedure)),
-        succeed,
-        fail0,
-    )
+    def execute_proc(arguments, fail0):
+        if TRACE_APPLICATIONS:
+            display(cons(procedure_name(procedure), arguments))
+            print()
+        return continue_with(
+            body_exec,
+            extend_environment(names, arguments, procedure_environment(procedure)),
+            succeed,
+            fail0,
+        )
 
     for param, operand_exec in zip(params[::-1], operand_execs[::-1]):
         execute_proc = lambda args, f, operand_exec=operand_exec, execute_proc=execute_proc: continue_with(
@@ -416,7 +417,7 @@ def apply_compound_procedure(
             param,
             operand_exec,
             calling_environment,
-            lambda arg, farg: continue_with(execute_proc, (arg,) + args, farg),
+            lambda arg, farg: continue_with(execute_proc, args + (arg,), farg),
             f,
         )
 
