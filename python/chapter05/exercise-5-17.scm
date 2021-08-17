@@ -19,6 +19,11 @@
          sequence)
         (else (memq obj (cdr sequence)))))
 
+(define (list-ref n seq)
+  (if (= n 0)
+      (car seq)
+      (list-ref (- n 1) (cdr seq))))
+
 (define (require p)
   (if (not p) (amb) 'ok))
 
@@ -36,6 +41,10 @@
   (require (eq? (gender person) 'man))
   person)
 
+(define (the-woman person)
+  (require (eq? (gender person) 'woman))
+  person)
+
 (define (right-of person)
   (let ((right_pos (if (= (position person) 6)
                        1
@@ -48,25 +57,25 @@
           ((= right_pos (position lem)) lem)
           (else (error "invalid position" right_pos)))))
 
-(define (person name)
-  (assoc name people))
-
-(define (name person)
-  (car person))
-
 (define (gender person)
-  (car (cdr person)))
+  (cond ((= person ben) 'man)
+        ((= person eva) 'woman)
+        ((= person alyssa) 'woman)
+        ((= person luis) 'man)
+        ((= person cy) 'man)
+        ((= person lem) 'man)
+        (else #f)))
 
 (define (position person)
-  (car (cdr (cdr person))))
+  (list-ref person positions))
 
 (define (hand-score person)
-  (car (cdr (cdr (cdr person)))))
+  (list-ref person scores))
 
 
 (define (perm) (permutation 2 '(a b) '()))
 
-(define (permutation (seq lazy memo))
+(define (permutation seq)
   (define (loop n acc)
     (if (pair? acc)
         (require (not (memq (car acc) (cdr acc))))
@@ -91,33 +100,35 @@
 
 
 (begin
-  (define ben 'uninitialized)
-  (define eva 'uninitialized)
-  (define alyssa 'uninitialized)
-  (define luis 'uninitialized)
-  (define cy 'uninitialized)
-  (define lem 'uninitialized)
+  (define ben 0)
+  (define eva 1)
+  (define alyssa 2)
+  (define luis 3)
+  (define cy 4)
+  (define lem 5)
 
   (define people 'uninitialized)
 
-  (define counter 0)
+  (define n-solutions 0)
 
-  (maybe-set! people (list (list 'ben 'man 1 20)
-                           (list 'cy 'man (amb 2 3 ) (amb 10 20 30))
-                           (list 'lem 'man (amb 2 3) (amb 10 20 30))))
+  (define positions (cons 1 (cons 4 (permutation '(2 3 5 6)))))
 
-  (if (= (% counter 10000) 0)
-      (begin (display counter) (newline))
-      'ok)
-  (set! counter (+ counter 1))
+  (require (= (position ben) 1))
+  (require (= (position eva) 4))
 
-  (display "Solution") (newline)
-  (for-each (lambda (person)
-              (display person)
-              (newline))
-            people)
+  (define scores (permutation '(1 2 3 4 5 6)))
+
+  (require (stronger-hand (the-man (right-of alyssa)) lem))
+  (require (stronger-hand (the-man (right-of eva)) ben))
+  (require (stronger-hand (the-man (right-of ben)) cy))
+  (require (stronger-hand (the-man (right-of ben)) eva))
+  (require (stronger-hand (the-woman (right-of lem)) cy))
+  (require (stronger-hand (the-woman (right-of cy)) luis))
+
+  (set! n-solutions (+ n-solutions 1))
+  (display positions)
+  (display scores)
   (newline)
+  (amb)
 
-  (require (not (= (hand-score (person 'ben)) (hand-score (person 'lem)))))
-  (require (not (= (hand-score (person 'ben)) (hand-score (person 'cy)))))
-  (require (not (= (hand-score (person 'cy)) (hand-score (person 'lem))))))
+  (display n-solutions))
