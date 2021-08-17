@@ -20,7 +20,7 @@
         (else (memq key (cdr sequence)))))
 
 (define (require p)
-  (if p 'ok (amb)))
+  (if (not p) (amb) 'ok))
 
 (define (not p)
   (if p #f #t))
@@ -77,33 +77,41 @@
       (amb (car seq) (amb* (cdr seq)))))
 
 
-(define ben 'uninitialized)
-(define eva 'uninitialized)
-(define alyssa 'uninitialized)
-(define luis 'uninitialized)
-(define cy 'uninitialized)
-(define lem 'uninitialized)
+(define (an-integer-between low high)
+  (require (<= low high))
+  (amb low (an-integer-between (+ low 1) high)))
 
-(define people 'uninitialized)
+(define (req a b) (require (= a b)))
 
-(define counter 0)
 
-(maybe-set! people (list (list 'ben 'man 1 20)
-                         (list 'cy 'man (amb 2 3 ) (amb 10 20 30))
-                         (list 'lem 'man (amb 2 3) (amb 10 20 30))))
+'(begin
+   (define ben 'uninitialized)
+   (define eva 'uninitialized)
+   (define alyssa 'uninitialized)
+   (define luis 'uninitialized)
+   (define cy 'uninitialized)
+   (define lem 'uninitialized)
 
-(if (= (% counter 10000) 0)
-    (begin (display counter) (newline))
-    'ok)
-(set! counter (+ counter 1))
+   (define people 'uninitialized)
 
-(display "Solution") (newline)
-(for-each (lambda (person)
-            (display person)
-            (newline))
-          people)
-(newline)
+   (define counter 0)
 
-(require (not (= (hand-score (person 'ben)) (hand-score (person 'lem)))))
-(require (not (= (hand-score (person 'ben)) (hand-score (person 'cy)))))
-(require (not (= (hand-score (person 'cy)) (hand-score (person 'lem)))))
+   (maybe-set! people (list (list 'ben 'man 1 20)
+                            (list 'cy 'man (amb 2 3 ) (amb 10 20 30))
+                            (list 'lem 'man (amb 2 3) (amb 10 20 30))))
+
+   (if (= (% counter 10000) 0)
+       (begin (display counter) (newline))
+       'ok)
+   (set! counter (+ counter 1))
+
+   (display "Solution") (newline)
+   (for-each (lambda (person)
+               (display person)
+               (newline))
+             people)
+   (newline)
+
+   (require (not (= (hand-score (person 'ben)) (hand-score (person 'lem)))))
+   (require (not (= (hand-score (person 'ben)) (hand-score (person 'cy)))))
+   (require (not (= (hand-score (person 'cy)) (hand-score (person 'lem))))))
