@@ -32,7 +32,17 @@ from chapter05.common.lazy import (
     postpone,
     postpone_memo,
 )
-from chapter05.common.pairs import car, cdr, is_null, is_pair, length, cons
+from chapter05.common.pairs import (
+    car,
+    cdr,
+    cadr,
+    caddr,
+    is_null,
+    is_pair,
+    length,
+    cons,
+    is_tagged_list,
+)
 from chapter05.common.parser import read
 from chapter05.common.primitive_types import is_boolean, is_number, is_string, symbol
 from chapter05.common.procedures import (
@@ -351,6 +361,25 @@ def analyze_amb(expression):
 
 define_generic_procedure_handler(a.analyze, match_args(is_amb), analyze_amb)
 
+
+def is_if_fail(expression):
+    return is_tagged_list(expression, symbol("if-fail"))
+
+
+def analyze_if_fail(expression):
+    expression_exec = analyze(cadr(expression))
+    failure_exec = analyze(caddr(expression))
+
+    return lambda env, succeed, fail: continue_with(
+        expression_exec,
+        env,
+        succeed,
+        lambda: continue_with(failure_exec, env, succeed, fail),
+    )
+
+
+define_generic_procedure_handler(a.analyze, match_args(is_if_fail), analyze_if_fail)
+
 # === derived syntax ===
 
 define_generic_procedure_handler(
@@ -415,7 +444,7 @@ def apply_compound_procedure(
         )
 
     for param, operand_exec in zip(params[::-1], operand_execs[::-1]):
-        execute_proc = lambda args, f, operand_exec=operand_exec, execute_proc=execute_proc: continue_with(
+        execute_proc = lambda args, f, operand_exec=operand_exec, execute_proc=execute_proc, param=param: continue_with(
             a.handle_operand,
             param,
             operand_exec,
@@ -467,7 +496,9 @@ define_generic_procedure_handler(
     ),
 )
 define_generic_procedure_handler(
-    a.advance, match_args(is_advanced_memo), lambda object, succeed, fail: continue_with(succeed, advanced_value(object), fail)
+    a.advance,
+    match_args(is_advanced_memo),
+    lambda object, succeed, fail: continue_with(succeed, advanced_value(object), fail),
 )
 
 

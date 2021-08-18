@@ -69,7 +69,7 @@ def test_amb():
 
 def test_amb_preserves_side_effects():
     eval_str(
-        "(begin (define x '()) " "       (set! x (cons (amb 1 2 3) x)) " "       (amb))"
+        "(begin (define x '()) (set! x (cons (amb 1 2 3) x)) (amb))"
     )
     assert eval_str("x") == (3, 2, 1)
 
@@ -92,6 +92,24 @@ def test_compound_argument_order():
     assert eval_str("(define (triple a b c) "
                     "  (cons a (cons b (cons c '()))))"
                     "(triple 1 2 3)") == (1, 2, 3)
+
+
+def test_if_fail():
+    eval_str("(define (even? n) (= (% n 2) 0))")
+    eval_str("(define (require p) (if (not p) (amb) 'ok))")
+    assert eval_str(
+        "(if-fail (let ((x (amb 1 3 5)))"
+        "           (require (even? x))"
+        "           x)"
+        "         'all-odd)"
+    ) == symbol("all-odd")
+
+    assert eval_str(
+        "(if-fail (let ((x (amb 1 3 4 5)))"
+        "           (require (even? x))"
+        "           x)"
+        "         'all-odd)"
+    ) == 4
 
 
 @pytest.mark.skip
