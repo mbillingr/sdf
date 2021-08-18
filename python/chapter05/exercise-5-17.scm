@@ -1,37 +1,50 @@
 
-(define (for-each proc sequence)
-  (if (null? sequence)
-      'ok
-      (begin (proc (car sequence))
-             (for-each proc (cdr sequence)))))
+(define (solve)
+  (define n-strong 0)
+  (define n-weak 0)
 
-(define (assoc key sequence)
-  (cond ((null? sequence)
-         #f)
-        ((eq? (car (car sequence)) key)
-         (car sequence))
-        (else (assoc key (cdr sequence)))))
+  (set! positions (cons 1 (cons 4 (permutation '(2 3 5 6)))))
 
-(define (memq obj sequence)
-  (cond ((null? sequence)
-         #f)
-        ((eq? (car sequence) obj)
-         sequence)
-        (else (memq obj (cdr sequence)))))
+  (set! scores (permutation '(1 2 3 4 5 6)))
 
-(define (list-ref n seq)
-  (if (= n 0)
-      (car seq)
-      (list-ref (- n 1) (cdr seq))))
+  (require (= (position ben) 1))
+  (require (= (position eva) 4))
 
-(define (require p)
-  (if (not p) (amb) 'ok))
+  (require (stronger-hand (the-man (right-of alyssa)) lem))
+  (require (stronger-hand (the-man (right-of eva)) ben))
+  (require (stronger-hand (the-man (right-of ben)) eva))
+  (require (stronger-hand (the-woman (right-of lem)) cy))
+  (require (stronger-hand (the-woman (right-of cy)) luis))
 
-(define (deny p)
-  (if p (amb) 'ok))
+  (require (not (= (the-man (right-of ben)) cy)))
 
-(define (not p)
-  (if p #f #t))
+  (set! n-weak (+ n-weak 1))
+  (display "  weak solution: ")
+  (display positions)
+  (display scores)
+  (newline)
+
+  (require (stronger-hand (the-man (right-of ben)) cy))
+
+  (set! n-strong (+ n-strong 1))
+  (display "strong solution: ")
+  (display positions)
+  (display scores)
+  (newline)
+
+  (amb))
+
+
+(define ben 0)
+(define eva 1)
+(define alyssa 2)
+(define luis 3)
+(define cy 4)
+(define lem 5)
+
+(define positions 'uninitialized)
+(define scores 'uninitialized)
+
 
 (define (stronger-hand person1 person2)
   (> (hand-score person1)
@@ -73,8 +86,6 @@
   (list-ref person scores))
 
 
-(define (perm) (permutation 2 '(a b) '()))
-
 (define (permutation seq)
   (define (loop n acc)
     (if (pair? acc)
@@ -91,44 +102,26 @@
       (amb)
       (amb (car seq) (amb* (cdr seq)))))
 
+(define (require p)
+  (if (not p) (amb) 'ok))
 
-(define (an-integer-between low high)
-  (require (<= low high))
-  (amb low (an-integer-between (+ low 1) high)))
+(define (deny p)
+  (if p (amb) 'ok))
 
-(define (req a b) (require (= a b)))
+(define (memq obj sequence)
+  (cond ((null? sequence)
+         #f)
+        ((eq? (car sequence) obj)
+         sequence)
+        (else (memq obj (cdr sequence)))))
+
+(define (list-ref n seq)
+  (if (= n 0)
+      (car seq)
+      (list-ref (- n 1) (cdr seq))))
+
+(define (not p)
+  (if p #f #t))
 
 
-(begin
-  (define ben 0)
-  (define eva 1)
-  (define alyssa 2)
-  (define luis 3)
-  (define cy 4)
-  (define lem 5)
-
-  (define people 'uninitialized)
-
-  (define n-solutions 0)
-
-  (define positions (cons 1 (cons 4 (permutation '(2 3 5 6)))))
-
-  (require (= (position ben) 1))
-  (require (= (position eva) 4))
-
-  (define scores (permutation '(1 2 3 4 5 6)))
-
-  (require (stronger-hand (the-man (right-of alyssa)) lem))
-  (require (stronger-hand (the-man (right-of eva)) ben))
-  (require (stronger-hand (the-man (right-of ben)) cy))
-  (require (stronger-hand (the-man (right-of ben)) eva))
-  (require (stronger-hand (the-woman (right-of lem)) cy))
-  (require (stronger-hand (the-woman (right-of cy)) luis))
-
-  (set! n-solutions (+ n-solutions 1))
-  (display positions)
-  (display scores)
-  (newline)
-  (amb)
-
-  (display n-solutions))
+(solve)
