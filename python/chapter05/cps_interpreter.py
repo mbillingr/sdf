@@ -1,4 +1,5 @@
 from functools import reduce
+from time import time
 
 from chapter02.combinators import compose
 from chapter03.generic_procedures import (
@@ -471,16 +472,22 @@ define_generic_procedure_handler(
 
 
 def repl():
+    timer = time()
+
     def internal_loop(succeed, fail):
+        nonlocal timer
+
         print("> ", end="")
         inputs = tuple(read(input()))
 
         expression = inputs[0] if len(inputs) == 1 else (S.BEGIN,) + inputs
 
         def fail_k(*args):
+            print(f";;; {time() - timer} seconds elapsed")
             print(";;; There are no more values of", expression)
             return continue_with(internal_loop, success_k, no_problem)
 
+        timer = time()
         if expression == symbol("try-again"):
             return continue_with(fail)
         else:
@@ -490,6 +497,7 @@ def repl():
             )
 
     def success_k(value, fail):
+        print(f";;; {time() - timer} seconds elapsed")
         display(value)
         print()
         return continue_with(internal_loop, success_k, fail)
