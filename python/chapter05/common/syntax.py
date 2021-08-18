@@ -160,3 +160,11 @@ def is_amb(exp):
 
 def amb_alternatives(exp):
     return cdr(exp)
+
+
+def is_callcc(exp):
+    return is_tagged_list(exp, S.CALLCC)
+
+
+def callcc_callee(exp):
+    return cadr(exp)
