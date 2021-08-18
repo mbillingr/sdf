@@ -47,6 +47,7 @@ INITIAL_ENV_BINDINGS = {
     symbol("#t"): True,
     symbol("#f"): False,
     symbol("eq?"): lambda a, b: a is b,
+    symbol("not"): lambda b: not b,
     symbol("error"): error,
     symbol("global-hash-set!"): global_hash_set,
     symbol("global-hash-get"): global_hash_get,
