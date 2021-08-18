@@ -1,7 +1,7 @@
+from chapter05.common.display import display
 from chapter05.common.environment import THE_EMPTY_ENVIRONMENT, extend_environment
 from chapter05.common.pairs import cadr, car, cdr, cons, is_null, is_pair, length
 from chapter05.common.primitive_types import symbol
-from chapter05.common.display import display
 
 
 def make_initial_environment():
@@ -34,7 +34,7 @@ INITIAL_ENV_BINDINGS = {
     symbol("car"): car,
     symbol("cdr"): cdr,
     symbol("length"): length,
-    symbol("+"): lambda a, b: a + b,
+    symbol("+"): lambda *args: sum(args),
     symbol("-"): lambda a, b: a - b,
     symbol("*"): lambda a, b: a * b,
     symbol("/"): lambda a, b: a / b,
@@ -54,4 +54,5 @@ INITIAL_ENV_BINDINGS = {
     symbol("display"): lambda *args: display(*args),
     symbol("newline"): lambda: print(),
     symbol("list"): lambda *args: args,
+    symbol("the-unspecified-value"): type("_", (), {}),
 }

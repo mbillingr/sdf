@@ -32,7 +32,7 @@ from chapter05.common.lazy import (
     postpone,
     postpone_memo,
 )
-from chapter05.common.pairs import car, cdr, is_null, is_pair, length, cons
+from chapter05.common.pairs import car, cdr, cons, is_null, is_pair, length
 from chapter05.common.parser import read
 from chapter05.common.primitive_types import is_boolean, is_number, is_string, symbol
 from chapter05.common.procedures import (
@@ -50,6 +50,7 @@ from chapter05.common.syntax import (
     assignment_value,
     assignment_variable,
     begin_actions,
+    callcc_callee,
     definition_value,
     definition_variable,
     if_alternative,
@@ -59,6 +60,7 @@ from chapter05.common.syntax import (
     is_application,
     is_assignment,
     is_begin,
+    is_callcc,
     is_definition,
     is_if,
     is_lambda,
@@ -87,6 +89,11 @@ def run_execution(proc, *args):
             proc, args = proc(*args)
     except Return as ret:
         return ret.value
+
+
+def run_execution_light(proc, *args):
+    while True:
+        proc, args = proc(*args)
 
 
 class Return(Exception):
@@ -351,6 +358,46 @@ def analyze_amb(expression):
 
 define_generic_procedure_handler(a.analyze, match_args(is_amb), analyze_amb)
 
+
+def is_continuation(obj):
+    return isinstance(obj, Continuation)
+
+
+class Continuation:
+    def __init__(self, succeed, fail):
+        self.succeed = succeed
+        self.fail = fail
+
+
+def analyze_callcc(expression):
+    callee_exec = analyze(callcc_callee(expression))
+
+    def execute_callcc(env, succeed, fail):
+        reified_continuation = Continuation(succeed, fail)
+
+        return execute_strict(
+            callee_exec,
+            env,
+            lambda callee, cfail: continue_with(
+                a.apply,
+                callee,
+                [
+                    lambda env, succeed, fail: continue_with(
+                        succeed, reified_continuation, fail
+                    )
+                ],
+                env,
+                succeed,
+                cfail,
+            ),
+            fail,
+        )
+
+    return execute_callcc
+
+
+define_generic_procedure_handler(a.analyze, match_args(is_callcc), analyze_callcc)
+
 # === derived syntax ===
 
 define_generic_procedure_handler(
@@ -361,6 +408,31 @@ define_generic_procedure_handler(
 )
 
 # === apply ===
+
+
+def apply_continuation(continuation, operand_execs, env, succeed, fail):
+    def execute_proc(args, fail0):
+        if TRACE_APPLICATIONS:
+            display(cons(symbol("<continuation>"), args))
+            print()
+        return continue_with(continuation.succeed, *args, continuation.fail)
+
+    for operand_exec in operand_execs[::-1]:
+        execute_proc = lambda args, f, operand_exec=operand_exec, execute_proc=execute_proc: execute_strict(
+            operand_exec,
+            env,
+            lambda arg, farg: continue_with(execute_proc, args + (arg,), farg),
+            f,
+        )
+
+    return continue_with(execute_proc, (), fail)
+
+
+define_generic_procedure_handler(
+    a.apply,
+    match_args(is_continuation, is_executors, is_environment, callable, callable),
+    apply_continuation,
+)
 
 
 def apply_strict_primitive_procedure(procedure, operand_execs, env, succeed, fail):
@@ -415,7 +487,7 @@ def apply_compound_procedure(
         )
 
     for param, operand_exec in zip(params[::-1], operand_execs[::-1]):
-        execute_proc = lambda args, f, operand_exec=operand_exec, execute_proc=execute_proc: continue_with(
+        execute_proc = lambda args, f, operand_exec=operand_exec, execute_proc=execute_proc, param=param: continue_with(
             a.handle_operand,
             param,
             operand_exec,
@@ -467,7 +539,9 @@ define_generic_procedure_handler(
     ),
 )
 define_generic_procedure_handler(
-    a.advance, match_args(is_advanced_memo), lambda object, succeed, fail: continue_with(succeed, advanced_value(object), fail)
+    a.advance,
+    match_args(is_advanced_memo),
+    lambda object, succeed, fail: continue_with(succeed, advanced_value(object), fail),
 )
 
 

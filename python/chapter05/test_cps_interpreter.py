@@ -69,7 +69,7 @@ def test_amb():
 
 def test_amb_preserves_side_effects():
     eval_str(
-        "(begin (define x '()) " "       (set! x (cons (amb 1 2 3) x)) " "       (amb))"
+        "(begin (define x '()) (set! x (cons (amb 1 2 3) x)) (amb))"
     )
     assert eval_str("x") == (3, 2, 1)
 
@@ -89,9 +89,66 @@ def test_primitive_argument_order():
 
 
 def test_compound_argument_order():
-    assert eval_str("(define (triple a b c) "
-                    "  (cons a (cons b (cons c '()))))"
-                    "(triple 1 2 3)") == (1, 2, 3)
+    assert eval_str(
+        "(define (triple a b c) (cons a (cons b (cons c '())))) (triple 1 2 3)"
+    ) == (1, 2, 3)
+
+
+def test_callcc_return_result():
+    eval_str("(define foo 'uninitialized)")
+    eval_str("(set! foo (+ 1 (call/cc (lambda (k) (k 6))) 4))")
+    assert eval_str("foo") == 11
+
+
+def test_callcc_reenter():
+    eval_str("(define foo 'uninitialized)")
+    eval_str("(define bar 'uninitialized)")
+    eval_str("(set! foo (+ 1 (call/cc (lambda (k) (set! bar k) (k 6))) 4))")
+    assert eval_str("foo") == 11
+    eval_str("(bar -2)")
+    assert eval_str("foo") == 3
+
+
+def test_callcc_nonlocal_exit():
+    eval_str(
+        "(define (for-each proc seq)"
+        "  (if (null? seq)"
+        "      'ok"
+        "      (begin"
+        "        (proc (car seq))"
+        "        (for-each proc (cdr seq)))))"
+    )
+    eval_str("(define (negative? x) (< x 0))")
+    assert (
+        eval_str(
+            "(call/cc "
+            "  (lambda (exit)"
+            "    (for-each (lambda (x) (if (negative? x) (exit x)))"
+            "              '(54 0 37 -3 245 -19))"
+            "    (exit #t)))"
+        )
+        == -3
+    )
+
+
+def test_callcc_reenter_multiple():
+    eval_str("(define the-continuation #f)")
+    eval_str(
+        "(define (test)"
+        "  (let ((i 0))"
+        "    (call/cc (lambda (k) (set! the-continuation k)))"
+        "    (set! i (+ i 1))"
+        "    i))"
+    )
+    assert eval_str("(test)") == 1
+    assert eval_str("(the-continuation 'OK)") == 2
+    assert eval_str("(the-continuation 'OK)") == 3
+
+    eval_str("(define another-continuation the-continuation)")
+
+    assert eval_str("(test)") == 1
+    assert eval_str("(the-continuation 'OK)") == 2
+    assert eval_str("(another-continuation 'OK)") == 4
 
 
 @pytest.mark.skip
